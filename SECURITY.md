@@ -1,11 +1,13 @@
 # Security Policy
 
-If you believe you have found a security vulnerability, we encourage you to let us know right away.
+If you believe you have found a security vulnerability in Rieko, report it privately as soon as possible.
 
-We will investigate all legitimate reports and do our best to quickly fix the problem.
+Preferred disclosure path:
 
-Our preference is that you make use of GitHub's private vulnerability reporting feature to disclose potential security vulnerabilities in our Open Source Software.
+- Use GitHub's private vulnerability reporting flow in the [repository security tab](https://github.com/Kamblossi/Rieko/security).
 
-To do this, please visit the [Security tab](https://github.com/iamsrikanthnani/pluely/security) of the repository and click the **"Report a vulnerability"** button.
+Urgent contact:
 
-For urgent matters, you can also contact us at [support@pluely.com](mailto:support@pluely.com).
+- Email [contact@prismtechco.com](mailto:contact@prismtechco.com)
+
+We will review legitimate reports, confirm impact, and work on remediation as quickly as practical.

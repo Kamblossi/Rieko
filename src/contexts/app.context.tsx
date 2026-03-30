@@ -143,9 +143,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     safeLocalStorage.setItem(STORAGE_KEYS.SUPPORTS_IMAGES, String(value));
   };
 
-  // Pluely API State
+  // Rieko Cloud state
   const [pluelyApiEnabled, setPluelyApiEnabledState] = useState<boolean>(
-    safeLocalStorage.getItem(STORAGE_KEYS.PLUELY_API_ENABLED) === "true"
+    safeLocalStorage.getItem(STORAGE_KEYS.RIEKO_API_ENABLED) === "true"
   );
 
   const getActiveLicenseStatus = async () => {
@@ -276,9 +276,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    // Load Pluely API enabled state
+    // Load Rieko Cloud enabled state
     const savedPluelyApiEnabled = safeLocalStorage.getItem(
-      STORAGE_KEYS.PLUELY_API_ENABLED
+      STORAGE_KEYS.RIEKO_API_ENABLED
     );
     if (savedPluelyApiEnabled !== null) {
       setPluelyApiEnabledState(savedPluelyApiEnabled === "true");
@@ -454,14 +454,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkImageSupport = async () => {
       if (pluelyApiEnabled) {
-        // For Pluely API, check the selected model's modality
+        // For Rieko Cloud, check the selected model's modality
         try {
           const storage = await invoke<{
-            selected_pluely_model?: string;
+            selected_rieko_model?: string;
           }>("secure_storage_get");
 
-          if (storage.selected_pluely_model) {
-            const model = JSON.parse(storage.selected_pluely_model);
+          if (storage.selected_rieko_model) {
+            const model = JSON.parse(storage.selected_rieko_model);
             const hasImageSupport = model.modality?.includes("image") ?? false;
             setSupportsImages(hasImageSupport);
           } else {
@@ -616,16 +616,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const setPluelyApiEnabled = async (enabled: boolean) => {
     setPluelyApiEnabledState(enabled);
-    safeLocalStorage.setItem(STORAGE_KEYS.PLUELY_API_ENABLED, String(enabled));
+    safeLocalStorage.setItem(STORAGE_KEYS.RIEKO_API_ENABLED, String(enabled));
 
     if (enabled) {
       try {
         const storage = await invoke<{
-          selected_pluely_model?: string;
+          selected_rieko_model?: string;
         }>("secure_storage_get");
 
-        if (storage.selected_pluely_model) {
-          const model = JSON.parse(storage.selected_pluely_model);
+        if (storage.selected_rieko_model) {
+          const model = JSON.parse(storage.selected_rieko_model);
           const hasImageSupport = model.modality?.includes("image") ?? false;
           setSupportsImages(hasImageSupport);
         } else {
@@ -633,7 +633,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           setSupportsImages(false);
         }
       } catch (error) {
-        console.debug("Failed to check Pluely model image support:", error);
+        console.debug("Failed to check Rieko model image support:", error);
         setSupportsImages(false);
       }
     } else {

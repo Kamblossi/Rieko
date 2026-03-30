@@ -4123,7 +4123,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pluely"
+name = "rieko"
 version = "0.1.9"
 dependencies = [
  "anyhow",

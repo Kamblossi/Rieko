@@ -10,17 +10,17 @@ const Contribute = () => {
           </CardTitle>
           <CardDescription className="text-[10px] lg:text-xs">
             Fix a listed critical issue and earn a lifetime Dev Pro license
-            valued at $120. Only issues on our contribute page qualify. read
-            more at prismtechco.com/contribute
+            valued at $120. Only issues on our contribute page qualify. Read
+            more at www.rieko.prismtechco.com/contribute
           </CardDescription>
         </div>
         <Button asChild className="w-full md:w-auto text-[10px] lg:text-xs">
           <a
-            href="https://pluely.com/contribute"
+            href="https://www.rieko.prismtechco.com/contribute"
             rel="noopener noreferrer"
             target="_blank"
           >
-            prismtechco.com/contribute
+            rieko.prismtechco.com/contribute
           </a>
         </Button>
       </CardContent>

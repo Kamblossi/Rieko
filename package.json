@@ -1,21 +1,21 @@
 {
-  "name": "pluely",
+  "name": "rieko",
   "private": false,
   "version": "0.1.9",
-  "description": "The Open Source Alternative to Cluely - A lightning-fast, privacy-first AI assistant that works seamlessly during meetings, interviews, and conversations without anyone knowing.",
+  "description": "Rieko is a privacy-first AI desktop assistant from PrismTechCo for meetings, interviews, and focused workflows.",
   "author": {
-    "name": "Srikanth Nani",
-    "email": "srikanthnani1202@gmail.com",
-    "url": "https://www.srikanthnani.com"
+    "name": "Newton Ochieng",
+    "email": "contact@prismtechco.com",
+    "url": "https://www.rieko.prismtechco.com"
   },
-  "license": "GPL-3.0",
-  "homepage": "https://github.com/iamsrikanthnani/pluely#readme",
+  "license": "SEE LICENSE IN EULA.txt",
+  "homepage": "https://www.rieko.prismtechco.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iamsrikanthnani/pluely.git"
+    "url": "git+https://github.com/Kamblossi/Rieko.git"
   },
   "bugs": {
-    "url": "https://github.com/iamsrikanthnani/pluely/issues"
+    "url": "https://github.com/Kamblossi/Rieko/issues"
   },
   "keywords": [
     "ai-assistant",

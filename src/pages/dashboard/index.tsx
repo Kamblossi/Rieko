@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { GetLicense } from "@/components";
-import { PluelyApiSetup, Usage } from "./components";
+import { RiekoCloudSetup, Usage } from "./components";
 import { PageLayout } from "@/layouts";
 import { useApp } from "@/contexts";
 
@@ -49,11 +49,11 @@ const Dashboard = () => {
   return (
     <PageLayout
       title="Dashboard"
-      description="Rieko license to unlock faster responses, quicker support and premium features."
+      description="Manage your Rieko license, cloud access, and usage from one place."
       rightSlot={!hasActiveLicense ? <GetLicense /> : null}
     >
-      {/* Pluely API Setup */}
-      <PluelyApiSetup />
+      {/* Rieko Cloud Setup */}
+      <RiekoCloudSetup />
 
       <Usage
         loading={loadingActivity}

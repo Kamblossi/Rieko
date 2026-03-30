@@ -6,7 +6,7 @@ import { safeLocalStorage } from "@/lib/storage";
 import { Button, Card, CardContent, CardDescription, CardTitle } from "./ui";
 import { useApp } from "@/contexts";
 
-const STORAGE_KEY = "pluely-promote-card-dismissed";
+const STORAGE_KEY = "rieko-promote-card-dismissed";
 
 const Promote = () => {
   const { hasActiveLicense } = useApp();
@@ -36,16 +36,16 @@ const Promote = () => {
             a $5&ndash;$10 coupon for a monthly plan. Email your post link to{" "}
             <a
               className="text-primary underline underline-offset-4"
-              href="mailto:support@prismtechco.com"
+              href="mailto:contact@prismtechco.com"
             >
-              support@prismtechco.com
+              contact@prismtechco.com
             </a>
             .
           </CardDescription>
         </div>
         <Button asChild className="w-full md:w-auto text-[10px] lg:text-xs">
           <a
-            href="https://pluely.com/promote"
+            href="https://www.rieko.prismtechco.com/promote"
             rel="noopener noreferrer"
             target="_blank"
           >

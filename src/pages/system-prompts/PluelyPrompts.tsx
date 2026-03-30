@@ -21,15 +21,15 @@ import { safeLocalStorage } from "@/lib";
 import { STORAGE_KEYS } from "@/config";
 import moment from "moment";
 
-interface PluelyPrompt {
+interface RiekoPrompt {
   title: string;
   prompt: string;
   modelId: string;
   modelName: string;
 }
 
-interface PluelyPromptsResponse {
-  prompts: PluelyPrompt[];
+interface RiekoPromptsResponse {
+  prompts: RiekoPrompt[];
   total: number;
   last_updated?: string;
 }
@@ -44,25 +44,25 @@ interface Model {
   isAvailable: boolean;
 }
 
-const SELECTED_PLUELY_MODEL_STORAGE_KEY = "selected_pluely_model";
-const SELECTED_PLUELY_PROMPT_STORAGE_KEY = "selected_pluely_prompt";
+const SELECTED_RIEKO_MODEL_STORAGE_KEY = "selected_rieko_model";
+const SELECTED_RIEKO_PROMPT_STORAGE_KEY = "selected_rieko_prompt";
 
-export const PluelyPrompts = () => {
+export const RiekoPrompts = () => {
   const {
     setSystemPrompt,
     hasActiveLicense,
     setSupportsImages,
     pluelyApiEnabled,
   } = useApp();
-  const [prompts, setPrompts] = useState<PluelyPrompt[]>([]);
+  const [prompts, setPrompts] = useState<RiekoPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [selectedPluelyPrompt, setSelectedPluelyPrompt] =
-    useState<PluelyPrompt | null>(() => {
+  const [selectedRiekoPrompt, setSelectedRiekoPrompt] =
+    useState<RiekoPrompt | null>(() => {
       // Load selected prompt from local storage on initial render
       const stored = safeLocalStorage.getItem(
-        SELECTED_PLUELY_PROMPT_STORAGE_KEY
+        SELECTED_RIEKO_PROMPT_STORAGE_KEY
       );
       if (stored) {
         try {
@@ -79,20 +79,20 @@ export const PluelyPrompts = () => {
   useEffect(() => {
     if (!fetchInitiated.current) {
       fetchInitiated.current = true;
-      fetchPluelyPrompts();
+      fetchRiekoPrompts();
       fetchModels();
     }
   }, []);
 
-  // Watch for changes in user's selected prompt and clear Pluely selection if needed
+  // Watch for changes in user's selected prompt and clear Rieko selection if needed
   useEffect(() => {
     const checkUserPromptSelection = () => {
       const userSelectedPromptId = safeLocalStorage.getItem(
         STORAGE_KEYS.SELECTED_SYSTEM_PROMPT_ID
       );
-      // If user has selected one of their own prompts, clear Pluely prompt selection
+      // If user has selected one of their own prompts, clear the Rieko prompt selection
       if (userSelectedPromptId) {
-        setSelectedPluelyPrompt(null);
+        setSelectedRiekoPrompt(null);
       }
     };
 
@@ -110,20 +110,18 @@ export const PluelyPrompts = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const fetchPluelyPrompts = async () => {
+  const fetchRiekoPrompts = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await invoke<PluelyPromptsResponse>("fetch_prompts");
+      const response = await invoke<RiekoPromptsResponse>("fetch_prompts");
       setPrompts(response.prompts);
       if (response.last_updated) {
         setLastUpdated(response.last_updated);
       }
     } catch (err) {
-      console.error("Failed to fetch Pluely prompts:", err);
-      setError(
-        typeof err === "string" ? err : "Failed to fetch Pluely prompts"
-      );
+      console.error("Failed to fetch Rieko prompts:", err);
+      setError(typeof err === "string" ? err : "Failed to fetch Rieko prompts");
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +136,7 @@ export const PluelyPrompts = () => {
     }
   };
 
-  const handleSelectPluelyPrompt = async (prompt: PluelyPrompt) => {
+  const handleSelectRiekoPrompt = async (prompt: RiekoPrompt) => {
     // Check if user has active license
     if (!hasActiveLicense) {
       return;
@@ -147,7 +145,7 @@ export const PluelyPrompts = () => {
     try {
       // Set the system prompt
       setSystemPrompt(prompt.prompt);
-      setSelectedPluelyPrompt(prompt);
+      setSelectedRiekoPrompt(prompt);
 
       // Clear the user's selected prompt ID from local storage
       // This ensures the user prompt cards don't show as selected
@@ -156,9 +154,9 @@ export const PluelyPrompts = () => {
       // Save the system prompt to local storage
       safeLocalStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, prompt.prompt);
 
-      // Save the selected Pluely prompt to local storage for persistence
+      // Save the selected Rieko prompt to local storage for persistence
       safeLocalStorage.setItem(
-        SELECTED_PLUELY_PROMPT_STORAGE_KEY,
+        SELECTED_RIEKO_PROMPT_STORAGE_KEY,
         JSON.stringify(prompt)
       );
 
@@ -178,25 +176,25 @@ export const PluelyPrompts = () => {
         await invoke("secure_storage_save", {
           items: [
             {
-              key: SELECTED_PLUELY_MODEL_STORAGE_KEY,
+              key: SELECTED_RIEKO_MODEL_STORAGE_KEY,
               value: JSON.stringify(matchingModel),
             },
           ],
         });
       }
     } catch (error) {
-      console.error("Failed to select Pluely prompt:", error);
+      console.error("Failed to select Rieko prompt:", error);
     }
   };
 
-  const handleCardClick = (prompt: PluelyPrompt) => {
-    handleSelectPluelyPrompt(prompt);
+  const handleCardClick = (prompt: RiekoPrompt) => {
+    handleSelectRiekoPrompt(prompt);
   };
 
-  const isPromptSelected = (prompt: PluelyPrompt) => {
+  const isPromptSelected = (prompt: RiekoPrompt) => {
     return (
-      selectedPluelyPrompt?.title === prompt.title &&
-      selectedPluelyPrompt?.modelId === prompt.modelId
+      selectedRiekoPrompt?.title === prompt.title &&
+      selectedRiekoPrompt?.modelId === prompt.modelId
     );
   };
 
