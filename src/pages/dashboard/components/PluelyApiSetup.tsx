@@ -199,9 +199,15 @@ export const RiekoCloudSetup = () => {
     setIsLoading(true);
     setError(null);
     setSuccess(null);
-    setHasActiveLicense(false);
     try {
-      // Remove all license data from secure storage in one call
+      const response: ActivationResponse = await invoke("deactivate_license_api");
+
+      if (!response.activated) {
+        setError(response.error || "Failed to remove license");
+        return;
+      }
+
+      // Remove all license data from secure storage only after backend deactivation succeeds.
       await invoke("secure_storage_remove", {
         keys: [
           LICENSE_KEY_STORAGE_KEY,
@@ -210,19 +216,17 @@ export const RiekoCloudSetup = () => {
         ],
       });
 
-      setSuccess("License removed successfully!");
-
-      // Disable Rieko Cloud when the license is removed
+      setHasActiveLicense(false);
       setPluelyApiEnabled(false);
+      setSuccess("License removed successfully!");
 
       await fetchModels();
       await loadLicenseStatus(); // Reload status
     } catch (err) {
       console.error("Failed to remove license:", err);
-      setError("Failed to remove license");
+      setError(typeof err === "string" ? err : "Failed to remove license");
     } finally {
       setIsLoading(false);
-      await invoke("deactivate_license_api");
     }
   };
 

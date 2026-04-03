@@ -211,7 +211,7 @@ pub async fn activate_license_api(
 
     // Make HTTP request to activation endpoint with authorization header
     let client = reqwest::Client::new();
-    let url = format!("{}/activate", payment_endpoint);
+    let url = format!("{}/licenses/activate", payment_endpoint);
 
     let response = client
         .post(&url)
@@ -268,7 +268,7 @@ pub async fn deactivate_license_api(app: AppHandle) -> Result<ActivationResponse
     };
     // Make HTTP request to activation endpoint with authorization header
     let client = reqwest::Client::new();
-    let url = format!("{}/deactivate", payment_endpoint);
+    let url = format!("{}/licenses/deactivate", payment_endpoint);
 
     let response = client
         .post(&url)
@@ -333,7 +333,7 @@ pub async fn validate_license_api(app: AppHandle) -> Result<ValidateResponse, St
 
     // Make HTTP request to validate endpoint with authorization header
     let client = reqwest::Client::new();
-    let url = format!("{}/validate", payment_endpoint);
+    let url = format!("{}/licenses/validate", payment_endpoint);
 
     let response = client
         .post(&url)
