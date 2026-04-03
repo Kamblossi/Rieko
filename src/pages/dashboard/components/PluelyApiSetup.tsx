@@ -55,6 +55,8 @@ export const RiekoCloudSetup = () => {
     pluelyApiEnabled,
     setPluelyApiEnabled,
     hasActiveLicense,
+    cloudEnabledForPlan,
+    licensePlanCode,
     setHasActiveLicense,
     getActiveLicenseStatus,
     setSupportsImages,
@@ -73,6 +75,21 @@ export const RiekoCloudSetup = () => {
   const [searchValue, setSearchValue] = useState("");
   const fetchInitiated = useRef(false);
   const commandListRef = useRef<HTMLDivElement>(null);
+
+  const getPlanDisplayName = () => {
+    switch (licensePlanCode) {
+      case "basic-monthly":
+        return "Basic";
+      case "pro-monthly":
+        return "Pro Monthly";
+      case "pro-yearly":
+        return "Pro Yearly";
+      case "limited-trial":
+        return "Limited Trial";
+      default:
+        return "this plan";
+    }
+  };
 
   // Load license status on component mount
   useEffect(() => {
@@ -176,14 +193,25 @@ export const RiekoCloudSetup = () => {
         setSuccess("License activated successfully!");
         setLicenseKey(""); // Clear the input
 
-        // Auto-enable Rieko Cloud when the license is activated
-        if (!response?.is_dev_license) {
-          setPluelyApiEnabled(true);
-        }
-
         await loadLicenseStatus(); // Reload status
         await fetchModels();
-        await getActiveLicenseStatus();
+        const licenseStatus = await getActiveLicenseStatus();
+        const cloudAllowed = Boolean(
+          licenseStatus.is_active &&
+            (licenseStatus.is_dev_license ||
+              licenseStatus.capabilities?.cloud_enabled)
+        );
+
+        if (cloudAllowed) {
+          await setPluelyApiEnabled(true);
+        } else {
+          await setPluelyApiEnabled(false);
+          if (licenseStatus.is_active) {
+            setSuccess(
+              "License activated. This plan uses your own AI and STT providers; Rieko Cloud stays disabled for this package."
+            );
+          }
+        }
       } else {
         setError(response.error || "Failed to activate license");
       }
@@ -222,6 +250,7 @@ export const RiekoCloudSetup = () => {
 
       await fetchModels();
       await loadLicenseStatus(); // Reload status
+      await getActiveLicenseStatus();
     } catch (err) {
       console.error("Failed to remove license:", err);
       setError(typeof err === "string" ? err : "Failed to remove license");
@@ -324,7 +353,7 @@ export const RiekoCloudSetup = () => {
         >
           <PopoverTrigger
             asChild
-            disabled={isModelsLoading}
+            disabled={isModelsLoading || !cloudEnabledForPlan}
             className="cursor-pointer flex justify-start"
           >
             <Button
@@ -407,8 +436,8 @@ export const RiekoCloudSetup = () => {
                 <label className="text-sm font-medium">License Key</label>
                 <p className="text-sm font-medium text-muted-foreground">
                   After completing your purchase, you'll receive a Rieko
-                  license key by email. Paste it below to activate cloud
-                  access.
+                  license key by email. Paste it below to activate your
+                  license and unlock the features included in your package.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -470,10 +499,15 @@ export const RiekoCloudSetup = () => {
                 </Button>
               </div>
               {storedLicenseKey ? (
-                <div className="-mt-1">
+                <div className="-mt-1 space-y-2">
                   <p className="text-sm font-medium text-muted-foreground select-auto">
                     If you need help, contact contact@prismtechco.com
                   </p>
+                  {hasActiveLicense && !cloudEnabledForPlan ? (
+                    <div className="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-md">
+                      {getPlanDisplayName()} does not include Rieko Cloud. Continue with your own AI and STT providers for this package.
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </>
@@ -484,17 +518,21 @@ export const RiekoCloudSetup = () => {
         <Header
           title={`${pluelyApiEnabled ? "Disable" : "Enable"} Rieko Cloud`}
           description={
-            storedLicenseKey
-              ? pluelyApiEnabled
-                ? "Using Rieko Cloud for chat and audio workflows."
-                : "Using your own AI and STT providers."
-              : "A valid license is required to enable Rieko Cloud, or you can continue with your own AI and STT providers."
+            !storedLicenseKey
+              ? "A valid license is required to enable Rieko Cloud, or you can continue with your own AI and STT providers."
+              : !hasActiveLicense
+                ? "Your stored license is inactive. Update or reactivate it to use paid features."
+                : !cloudEnabledForPlan
+                  ? `${getPlanDisplayName()} does not include Rieko Cloud. Continue with your own AI and STT providers.`
+                  : pluelyApiEnabled
+                    ? "Using Rieko Cloud for chat and audio workflows."
+                    : "Using your own AI and STT providers."
           }
         />
         <Switch
           checked={pluelyApiEnabled}
           onCheckedChange={setPluelyApiEnabled}
-          disabled={!storedLicenseKey || !hasActiveLicense} // Disable if no license is stored
+          disabled={!storedLicenseKey || !hasActiveLicense || !cloudEnabledForPlan}
         />
       </div>
     </div>

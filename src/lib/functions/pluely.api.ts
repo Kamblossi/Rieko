@@ -2,17 +2,32 @@ import { invoke } from "@tauri-apps/api/core";
 import { safeLocalStorage } from "../storage";
 import { STORAGE_KEYS } from "@/config";
 
+type LicenseValidationState = {
+  is_active: boolean;
+  is_dev_license: boolean;
+  capabilities?: {
+    cloud_enabled?: boolean;
+  };
+};
+
 // Helper function to check if Rieko Cloud should be used
 export async function shouldUsePluelyAPI(): Promise<boolean> {
   try {
-    // Check if Rieko Cloud is enabled in localStorage
     const pluelyApiEnabled =
       safeLocalStorage.getItem(STORAGE_KEYS.RIEKO_API_ENABLED) === "true";
     if (!pluelyApiEnabled) return false;
 
-    // Check if license is available
-    const hasLicense = await invoke<boolean>("check_license_status");
-    return hasLicense;
+    const validation = await invoke<LicenseValidationState>(
+      "validate_license_api"
+    );
+
+    if (!validation.is_active) {
+      return false;
+    }
+
+    return Boolean(
+      validation.is_dev_license || validation.capabilities?.cloud_enabled
+    );
   } catch (error) {
     console.warn("Failed to check Rieko Cloud availability:", error);
     return false;

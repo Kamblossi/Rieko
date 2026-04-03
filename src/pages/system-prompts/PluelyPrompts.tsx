@@ -51,6 +51,7 @@ export const RiekoPrompts = () => {
   const {
     setSystemPrompt,
     hasActiveLicense,
+    cloudEnabledForPlan,
     setSupportsImages,
     pluelyApiEnabled,
   } = useApp();
@@ -75,6 +76,7 @@ export const RiekoPrompts = () => {
     });
   const [models, setModels] = useState<Model[]>([]);
   const fetchInitiated = useRef(false);
+  const hasCloudPromptAccess = hasActiveLicense && cloudEnabledForPlan;
 
   useEffect(() => {
     if (!fetchInitiated.current) {
@@ -137,8 +139,7 @@ export const RiekoPrompts = () => {
   };
 
   const handleSelectRiekoPrompt = async (prompt: RiekoPrompt) => {
-    // Check if user has active license
-    if (!hasActiveLicense) {
+    if (!hasCloudPromptAccess) {
       return;
     }
 
@@ -253,11 +254,16 @@ export const RiekoPrompts = () => {
         {!hasActiveLicense && (
           <GetLicense buttonText="Unlock" buttonClassName="shrink-0" />
         )}
+        {hasActiveLicense && !cloudEnabledForPlan && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 shrink-0">
+            Rieko Cloud prompts are unavailable on this plan.
+          </div>
+        )}
       </div>
 
       <div
         className={`grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 pb-4 ${
-          !hasActiveLicense ? "opacity-60" : ""
+          !hasCloudPromptAccess ? "opacity-60" : ""
         }`}
       >
         {prompts.map((prompt, index) => {
@@ -266,7 +272,7 @@ export const RiekoPrompts = () => {
             <Card
               key={`${prompt.title}-${index}`}
               className={`relative border lg:border-2 shadow-none p-4 pb-10 gap-0 group transition-all hover:shadow-sm ${
-                hasActiveLicense ? "cursor-pointer" : "cursor-not-allowed"
+                hasCloudPromptAccess ? "cursor-pointer" : "cursor-not-allowed"
               } ${
                 isSelected
                   ? "!bg-primary/5 dark:!bg-primary/10 border-primary"
@@ -277,7 +283,7 @@ export const RiekoPrompts = () => {
               {isSelected && (
                 <CheckCircle2 className="size-5 text-green-500 flex-shrink-0 absolute top-2 right-2" />
               )}
-              {!hasActiveLicense && (
+              {!hasCloudPromptAccess && (
                 <LockIcon className="size-4 text-muted-foreground flex-shrink-0 absolute top-2 right-2" />
               )}
               <CardHeader className="p-0 pb-0 select-none">

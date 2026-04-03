@@ -783,11 +783,11 @@ async fn user_activity(
         .unwrap_or(configured_model);
 
     let mut payload = serde_json::json!({
-        "license": license_key,
-        "instance": instance_id,
-        "machine_id": machine_id,
-        "app_version": app_version,
-        "ai_model": ai_model,
+        "event_type": "chat_completed",
+        "model": ai_model,
+        "metadata": {
+            "app_version": app_version,
+        },
     });
 
     if let Some(metrics) = activity_metrics {
@@ -806,6 +806,9 @@ async fn user_activity(
         .post(&activity_url)
         .header("Authorization", format!("Bearer {}", api_access_key))
         .header("Content-Type", "application/json")
+        .header("license_key", &license_key)
+        .header("instance", &instance_id)
+        .header("machine_id", &machine_id)
         .json(&payload)
         .send()
         .await;
@@ -960,9 +963,21 @@ pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
 
 // Fetch Rieko Prompts API
 #[tauri::command]
-pub async fn fetch_prompts() -> Result<RiekoPromptsResponse, String> {
+pub async fn fetch_prompts(app: AppHandle) -> Result<RiekoPromptsResponse, String> {
     let app_endpoint = get_app_endpoint()?;
     let api_access_key = get_api_access_key()?;
+
+    let (license_key, instance_id) = match get_stored_credentials(&app).await {
+        Ok((lk, id, _)) => (lk, id),
+        Err(_) => ("".to_string(), "".to_string()),
+    };
+    let machine_id = app
+        .machine_uid()
+        .get_machine_uid()
+        .ok()
+        .and_then(|uid| uid.id)
+        .unwrap_or_else(|| "".to_string());
+    let app_version = app.package_info().version.to_string();
 
     let client = reqwest::Client::new();
     let url = format!("{}/api/prompts", app_endpoint);
@@ -971,6 +986,10 @@ pub async fn fetch_prompts() -> Result<RiekoPromptsResponse, String> {
         .post(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
+        .header("license_key", &license_key)
+        .header("instance", &instance_id)
+        .header("machine_id", &machine_id)
+        .header("app_version", &app_version)
         .send()
         .await
         .map_err(|e| {
@@ -1121,7 +1140,7 @@ pub async fn get_activity(app: AppHandle) -> Result<serde_json::Value, String> {
         .get(&activity_url)
         .header("Authorization", format!("Bearer {}", api_access_key))
         .header("license_key", &license_key)
-        .header("instance_name", &instance_id)
+         .header("instance", &instance_id)
         .header("machine_id", machine_id)
         .header("app_version", app_version)
         .send()

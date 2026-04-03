@@ -167,11 +167,41 @@ pub struct ActivationResponse {
     is_dev_license: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct LicenseCapabilities {
+    #[serde(default)]
+    cloud_enabled: bool,
+    #[serde(default)]
+    dev_space_enabled: bool,
+    #[serde(default)]
+    byok_enabled: bool,
+    #[serde(default)]
+    supports_audio: bool,
+    #[serde(default)]
+    supports_vision: bool,
+    #[serde(default)]
+    supports_code: bool,
+    #[serde(default)]
+    allowed_model_keys: Vec<String>,
+    #[serde(default)]
+    trial_request_limit: Option<u32>,
+    #[serde(default)]
+    monthly_generation_limit: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ValidateResponse {
     is_active: bool,
     last_validated_at: Option<String>,
     is_dev_license: bool,
+    #[serde(default)]
+    plan_code: Option<String>,
+    #[serde(default)]
+    tier: Option<String>,
+    #[serde(default)]
+    capabilities: LicenseCapabilities,
+    #[serde(default)]
+    reason: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -314,7 +344,9 @@ pub async fn validate_license_api(app: AppHandle) -> Result<ValidateResponse, St
     let payment_endpoint = get_payment_endpoint()?;
     let api_access_key = get_api_access_key()?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
-    let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
+    let storage = secure_storage_get(app.clone()).await?;
+    let license_key = storage.license_key.unwrap_or_default();
+    let instance_id = storage.instance_id.unwrap_or_default();
     let app_version: String = env!("CARGO_PKG_VERSION").to_string();
     let validate_request = ActivationRequest {
         license_key: license_key.clone(),
@@ -324,11 +356,7 @@ pub async fn validate_license_api(app: AppHandle) -> Result<ValidateResponse, St
     };
 
     if license_key.is_empty() || instance_id.is_empty() {
-        return Ok(ValidateResponse {
-            is_active: false,
-            last_validated_at: None,
-            is_dev_license: false,
-        });
+        return Ok(ValidateResponse::default());
     }
 
     // Make HTTP request to validate endpoint with authorization header

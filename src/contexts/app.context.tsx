@@ -17,7 +17,13 @@ import {
   CursorType,
   updateCursorType,
 } from "@/lib/storage";
-import { IContextType, ScreenshotConfig, TYPE_PROVIDER } from "@/types";
+import {
+  IContextType,
+  LicenseCapabilities,
+  LicenseValidationState,
+  ScreenshotConfig,
+  TYPE_PROVIDER,
+} from "@/types";
 import curl2Json from "@bany/curl-to-json";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -132,6 +138,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     DEFAULT_CUSTOMIZABLE_STATE
   );
   const [hasActiveLicense, setHasActiveLicense] = useState<boolean>(false);
+  const [cloudEnabledForPlan, setCloudEnabledForPlan] = useState<boolean>(false);
+  const [licensePlanCode, setLicensePlanCode] = useState<string | null>(null);
+  const [licenseTier, setLicenseTier] = useState<string | null>(null);
+  const [licenseCapabilities, setLicenseCapabilities] =
+    useState<LicenseCapabilities | null>(null);
   const [supportsImages, setSupportsImagesState] = useState<boolean>(() => {
     const stored = safeLocalStorage.getItem(STORAGE_KEYS.SUPPORTS_IMAGES);
     return stored === null ? true : stored === "true";
@@ -148,13 +159,63 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     safeLocalStorage.getItem(STORAGE_KEYS.RIEKO_API_ENABLED) === "true"
   );
 
-  const getActiveLicenseStatus = async () => {
-    const response: { is_active: boolean; is_dev_license: boolean } =
-      await invoke("validate_license_api");
-    setHasActiveLicense(response.is_active);
+  const applySelectedProviderImageSupport = () => {
+    const provider = allAiProviders.find(
+      (p) => p.id === selectedAIProvider.provider
+    );
 
-    if (response?.is_dev_license) {
-      setPluelyApiEnabled(false);
+    if (provider) {
+      const hasImageSupport = provider.curl?.includes("{{IMAGE}}") ?? false;
+      setSupportsImages(hasImageSupport);
+    } else {
+      setSupportsImages(true);
+    }
+  };
+
+  const getCloudEnabledFromStatus = (status?: LicenseValidationState | null) =>
+    Boolean(
+      status?.is_active &&
+        (status?.is_dev_license || status?.capabilities?.cloud_enabled)
+    );
+
+  const disableRiekoCloudLocally = () => {
+    setPluelyApiEnabledState(false);
+    safeLocalStorage.setItem(STORAGE_KEYS.RIEKO_API_ENABLED, "false");
+    applySelectedProviderImageSupport();
+  };
+
+  const getActiveLicenseStatus = async (): Promise<LicenseValidationState> => {
+    const inactiveStatus: LicenseValidationState = {
+      is_active: false,
+      last_validated_at: null,
+      is_dev_license: false,
+      plan_code: null,
+      tier: null,
+      capabilities: {
+        cloud_enabled: false,
+        allowed_model_keys: [],
+      },
+      reason: null,
+    };
+
+    let response: LicenseValidationState;
+
+    try {
+      response = await invoke<LicenseValidationState>("validate_license_api");
+    } catch (error) {
+      response = inactiveStatus;
+    }
+
+    setHasActiveLicense(response.is_active);
+    setLicensePlanCode(response.plan_code ?? null);
+    setLicenseTier(response.tier ?? null);
+    setLicenseCapabilities(response.capabilities ?? null);
+
+    const cloudEnabled = getCloudEnabledFromStatus(response);
+    setCloudEnabledForPlan(cloudEnabled);
+
+    if (!cloudEnabled) {
+      disableRiekoCloudLocally();
     }
 
     // Check if the auto configs are enabled
@@ -168,6 +229,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Set the flag to true so that we don't change the mode again
       localStorage.setItem("auto-configs-enabled", "true");
     }
+
+    return response;
   };
 
   useEffect(() => {
@@ -615,6 +678,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const setPluelyApiEnabled = async (enabled: boolean) => {
+    if (enabled && !cloudEnabledForPlan) {
+      disableRiekoCloudLocally();
+      loadData();
+      return;
+    }
+
     setPluelyApiEnabledState(enabled);
     safeLocalStorage.setItem(STORAGE_KEYS.RIEKO_API_ENABLED, String(enabled));
 
@@ -637,16 +706,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setSupportsImages(false);
       }
     } else {
-      // Switching to regular provider - check if curl contains {{IMAGE}}
-      const provider = allAiProviders.find(
-        (p) => p.id === selectedAIProvider.provider
-      );
-      if (provider) {
-        const hasImageSupport = provider.curl?.includes("{{IMAGE}}") ?? false;
-        setSupportsImages(hasImageSupport);
-      } else {
-        setSupportsImages(true);
-      }
+      applySelectedProviderImageSupport();
     }
 
     loadData();
@@ -674,6 +734,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     pluelyApiEnabled,
     setPluelyApiEnabled,
     hasActiveLicense,
+    cloudEnabledForPlan,
+    licensePlanCode,
+    licenseTier,
+    licenseCapabilities,
     setHasActiveLicense,
     getActiveLicenseStatus,
     selectedAudioDevices,

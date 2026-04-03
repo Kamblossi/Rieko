@@ -2,7 +2,30 @@ import { Dispatch, SetStateAction } from "react";
 import { ScreenshotConfig, TYPE_PROVIDER } from "@/types";
 import { CursorType, CustomizableState } from "@/lib/storage";
 
+export type LicenseCapabilities = {
+  cloud_enabled?: boolean;
+  dev_space_enabled?: boolean;
+  byok_enabled?: boolean;
+  supports_audio?: boolean;
+  supports_vision?: boolean;
+  supports_code?: boolean;
+  allowed_model_keys?: string[];
+  trial_request_limit?: number | null;
+  monthly_generation_limit?: number | null;
+};
+
+export type LicenseValidationState = {
+  is_active: boolean;
+  last_validated_at?: string | null;
+  is_dev_license: boolean;
+  plan_code?: string | null;
+  tier?: string | null;
+  capabilities?: LicenseCapabilities;
+  reason?: string | null;
+};
+
 export type IContextType = {
+
   systemPrompt: string;
   setSystemPrompt: Dispatch<SetStateAction<string>>;
   allAiProviders: TYPE_PROVIDER[];
@@ -43,8 +66,12 @@ export type IContextType = {
   pluelyApiEnabled: boolean;
   setPluelyApiEnabled: (enabled: boolean) => Promise<void>;
   hasActiveLicense: boolean;
+  cloudEnabledForPlan: boolean;
+  licensePlanCode: string | null;
+  licenseTier: string | null;
+  licenseCapabilities: LicenseCapabilities | null;
   setHasActiveLicense: Dispatch<SetStateAction<boolean>>;
-  getActiveLicenseStatus: () => Promise<void>;
+  getActiveLicenseStatus: () => Promise<LicenseValidationState>;
   selectedAudioDevices: {
     input: { id: string; name: string };
     output: { id: string; name: string };
