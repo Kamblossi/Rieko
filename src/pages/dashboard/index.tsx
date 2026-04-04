@@ -6,12 +6,12 @@ import { PageLayout } from "@/layouts";
 import { useApp } from "@/contexts";
 
 const Dashboard = () => {
-  const { hasActiveLicense } = useApp();
+  const { hasActiveLicense, cloudEnabledForPlan } = useApp();
   const [activity, setActivity] = useState<any>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
 
   const fetchActivity = useCallback(async () => {
-    if (!hasActiveLicense) {
+    if (!hasActiveLicense || !cloudEnabledForPlan) {
       setActivity({ data: [], total_tokens_used: 0 });
       return;
     }
@@ -29,15 +29,15 @@ const Dashboard = () => {
     } finally {
       setLoadingActivity(false);
     }
-  }, [hasActiveLicense]);
+  }, [cloudEnabledForPlan, hasActiveLicense]);
 
   useEffect(() => {
-    if (hasActiveLicense) {
+    if (hasActiveLicense && cloudEnabledForPlan) {
       fetchActivity();
     } else {
       setActivity(null);
     }
-  }, [fetchActivity, hasActiveLicense]);
+  }, [cloudEnabledForPlan, fetchActivity, hasActiveLicense]);
 
   const activityData =
     activity && Array.isArray(activity.data) ? activity.data : [];

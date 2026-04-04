@@ -11,6 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import curl2Json from "@bany/curl-to-json";
 import { shouldUsePluelyAPI } from "./pluely.api";
+import { getFriendlyRiekoCloudErrorMessage } from "./rieko-cloud-errors";
 import { CHUNK_POLL_INTERVAL_MS } from "../chat-constants";
 import { getResponseSettings, RESPONSE_LENGTHS, LANGUAGES } from "@/lib";
 import { MARKDOWN_FORMATTING_INSTRUCTIONS } from "@/config/constants";
@@ -156,8 +157,7 @@ async function* fetchPluelyAIResponse(params: {
       unlistenComplete();
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    yield `Rieko Cloud Error: ${errorMessage}`;
+    throw new Error(getFriendlyRiekoCloudErrorMessage(error));
   }
 }
 
@@ -407,10 +407,6 @@ export async function* fetchAIResponse(params: {
       }
     }
   } catch (error) {
-    throw new Error(
-      `Error in fetchAIResponse: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`
-    );
+    throw new Error(getFriendlyRiekoCloudErrorMessage(error));
   }
 }

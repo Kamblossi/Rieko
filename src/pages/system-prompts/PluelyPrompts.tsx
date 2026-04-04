@@ -17,7 +17,7 @@ import {
   ClockIcon,
 } from "lucide-react";
 import { useApp } from "@/contexts";
-import { safeLocalStorage } from "@/lib";
+import { safeLocalStorage, getFriendlyRiekoCloudErrorMessage } from "@/lib";
 import { STORAGE_KEYS } from "@/config";
 import moment from "moment";
 
@@ -123,7 +123,11 @@ export const RiekoPrompts = () => {
       }
     } catch (err) {
       console.error("Failed to fetch Rieko prompts:", err);
-      setError(typeof err === "string" ? err : "Failed to fetch Rieko prompts");
+      setError(
+        getFriendlyRiekoCloudErrorMessage(
+          typeof err === "string" ? err : "Failed to fetch Rieko prompts"
+        )
+      );
     } finally {
       setIsLoading(false);
     }

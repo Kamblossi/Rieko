@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { TYPE_PROVIDER } from "@/types";
 import curl2Json from "@bany/curl-to-json";
 import { shouldUsePluelyAPI } from "./pluely.api";
+import { getFriendlyRiekoCloudErrorMessage } from "./rieko-cloud-errors";
 
 // Rieko Cloud STT function
 async function fetchPluelySTT(audio: File | Blob): Promise<string> {
@@ -27,12 +28,15 @@ async function fetchPluelySTT(audio: File | Blob): Promise<string> {
 
     if (response.success && response.transcription) {
       return response.transcription;
-    } else {
-      return response.error || "Transcription failed";
     }
+
+    throw new Error(
+      getFriendlyRiekoCloudErrorMessage(
+        response.error || "Transcription failed"
+      )
+    );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return `Rieko Cloud STT Error: ${errorMessage}`;
+    throw new Error(getFriendlyRiekoCloudErrorMessage(error));
   }
 }
 

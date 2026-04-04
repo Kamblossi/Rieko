@@ -10,6 +10,7 @@ import { SparklesIcon } from "lucide-react";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useApp } from "@/contexts";
+import { getFriendlyRiekoCloudErrorMessage } from "@/lib";
 
 interface GenerateSystemPromptProps {
   onGenerate: (prompt: string, promptName: string) => void;
@@ -23,7 +24,7 @@ interface SystemPromptResponse {
 export const GenerateSystemPrompt = ({
   onGenerate,
 }: GenerateSystemPromptProps) => {
-  const { hasActiveLicense } = useApp();
+  const { hasActiveLicense, cloudEnabledForPlan } = useApp();
   const [userPrompt, setUserPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +53,10 @@ export const GenerateSystemPrompt = ({
         setUserPrompt("");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to generate prompt";
-      setError(errorMessage);
+      const errorMessage = getFriendlyRiekoCloudErrorMessage(
+        err instanceof Error ? err.message : err
+      );
+      setError(errorMessage || "Failed to generate prompt");
       console.error("Error generating system prompt:", err);
     } finally {
       setIsGenerating(false);
@@ -100,7 +102,23 @@ export const GenerateSystemPrompt = ({
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          {hasActiveLicense ? (
+          {!hasActiveLicense ? (
+            <div className="w-full flex flex-col gap-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                You need an active license to use this feature. Click the button
+                below to get a license.
+              </p>
+              <GetLicense
+                buttonText="Get License"
+                buttonClassName="w-full"
+                setState={setIsOpen}
+              />
+            </div>
+          ) : !cloudEnabledForPlan ? (
+            <div className="w-full rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-sm text-amber-700 dark:text-amber-300">
+              This plan does not include Rieko Cloud. Use your own AI and STT providers or upgrade.
+            </div>
+          ) : (
             <Button
               className="w-full"
               onClick={handleGenerate}
@@ -118,18 +136,7 @@ export const GenerateSystemPrompt = ({
                 </>
               )}
             </Button>
-          ) : (
-            <div className="w-full flex flex-col gap-3">
-              <p className="text-sm font-medium text-muted-foreground">
-                You need an active license to use this feature. Click the button
-                below to get a license.
-              </p>
-              <GetLicense
-                buttonText="Get License"
-                buttonClassName="w-full"
-                setState={setIsOpen}
-              />
-            </div>
+
           )}
         </div>
       </PopoverContent>

@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components";
 import { AudioVisualizer } from "@/pages/app/components/speech/audio-visualizer";
-import { shouldUsePluelyAPI, fetchSTT } from "@/lib";
+import { shouldUsePluelyAPI, fetchSTT, getFriendlyRiekoCloudErrorMessage } from "@/lib";
 import { useApp } from "@/contexts";
 import { StopCircle, Send } from "lucide-react";
 
 interface AudioRecorderProps {
   onTranscriptionComplete: (text: string) => void;
   onCancel: () => void;
+  onError?: (message: string) => void;
 }
 
 const MAX_DURATION = 3 * 60 * 1000;
@@ -15,6 +16,7 @@ const MAX_DURATION = 3 * 60 * 1000;
 export const AudioRecorder = ({
   onTranscriptionComplete,
   onCancel,
+  onError,
 }: AudioRecorderProps) => {
   const { selectedSttProvider, allSttProviders, selectedAudioDevices } =
     useApp();
@@ -162,7 +164,9 @@ export const AudioRecorder = ({
 
       onTranscriptionComplete(text);
     } catch (error) {
+      const message = getFriendlyRiekoCloudErrorMessage(error);
       console.error("Transcription failed:", error);
+      onError?.(message);
       onCancel();
     }
   };

@@ -345,16 +345,7 @@ async fn fetch_api_response_config(
             .await
             .unwrap_or_else(|_| "Unknown server error".to_string());
 
-        // Try to parse error as JSON to get a more specific error message
-        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_text) {
-            if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
-                return Err(format!("Server error ({}): {}", status, error_msg));
-            } else if let Some(message) = error_json.get("message").and_then(|m| m.as_str()) {
-                return Err(format!("Server error ({}): {}", status, message));
-            }
-        }
-
-        return Err(format!("Server error ({}): {}", status, error_text));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
     let api_config: ApiResponseConfig = response
         .json()
@@ -386,6 +377,61 @@ fn map_api_error_message(error_rules: &[ApiConfigError], sources: &[String]) -> 
             "Something went wrong. Please try switching to a different model or contact support."
                 .to_string()
         })
+}
+
+fn map_known_cloud_error_message(source: &str) -> Option<String> {
+    let upper = source.to_uppercase();
+    let lower = source.to_lowercase();
+
+    if upper.contains("CLOUD_NOT_ENABLED_FOR_PLAN")
+        || lower.contains("does not include rieko cloud")
+        || lower.contains("cloud is not enabled for this plan")
+    {
+        return Some(
+            "This plan does not include Rieko Cloud. Use your own AI and STT providers or upgrade."
+                .to_string(),
+        );
+    }
+
+    if upper.contains("TRIAL_REQUEST_LIMIT_REACHED")
+        || lower.contains("limited trial request limit")
+        || lower.contains("5-request limit")
+        || lower.contains("request limit of 5 has been reached")
+    {
+        return Some(
+            "Your Limited Trial has reached its 5-request limit. Upgrade to continue using Rieko Cloud."
+                .to_string(),
+        );
+    }
+
+    None
+}
+
+fn parse_cloud_error_response(status: reqwest::StatusCode, error_text: &str) -> String {
+    if let Some(message) = map_known_cloud_error_message(error_text) {
+        return message;
+    }
+
+    if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(error_text) {
+        if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
+            if let Some(message) = map_known_cloud_error_message(error_msg) {
+                return message;
+            }
+        }
+
+        if let Some(message) = error_json.get("message").and_then(|m| m.as_str()) {
+            if let Some(friendly) = map_known_cloud_error_message(message) {
+                return friendly;
+            }
+            return message.to_string();
+        }
+
+        if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
+            return error_msg.to_string();
+        }
+    }
+
+    format!("Server error ({}): {}", status, error_text)
 }
 
 fn decode_audio_base64(audio_base64: &str) -> Result<Vec<u8>, String> {
@@ -443,10 +489,7 @@ async fn perform_user_audio_transcription(
             .text()
             .await
             .unwrap_or_else(|_| "Unable to read transcription error response".to_string());
-        return Err(format!(
-            "Transcription request returned {} with body: {}",
-            status, error_text
-        ));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
 
     let body_text = response
@@ -629,7 +672,12 @@ pub async fn chat_stream_response(
             }
         }
 
-        let final_message = map_api_error_message(&error_rules, &sources);
+        let friendly_message = parse_cloud_error_response(status, &error_text);
+        let final_message = if error_rules.is_empty() {
+            friendly_message.clone()
+        } else {
+            map_api_error_message(&error_rules, &sources)
+        };
         tauri::async_runtime::spawn({
             let app = app.clone();
             let provider = provider.clone();
@@ -941,16 +989,7 @@ pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
             .await
             .unwrap_or_else(|_| "Unknown server error".to_string());
 
-        // Try to parse error as JSON to get a more specific error message
-        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_text) {
-            if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
-                return Err(format!("Server error ({}): {}", status, error_msg));
-            } else if let Some(message) = error_json.get("message").and_then(|m| m.as_str()) {
-                return Err(format!("Server error ({}): {}", status, message));
-            }
-        }
-
-        return Err(format!("Server error ({}): {}", status, error_text));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
 
     let models_response: ModelsResponse = response
@@ -1014,15 +1053,7 @@ pub async fn fetch_prompts(app: AppHandle) -> Result<RiekoPromptsResponse, Strin
             .await
             .unwrap_or_else(|_| "Unknown server error".to_string());
 
-        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_text) {
-            if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
-                return Err(format!("Server error ({}): {}", status, error_msg));
-            } else if let Some(message) = error_json.get("message").and_then(|m| m.as_str()) {
-                return Err(format!("Server error ({}): {}", status, message));
-            }
-        }
-
-        return Err(format!("Server error ({}): {}", status, error_text));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
 
     let prompts_response: RiekoPromptsResponse = response
@@ -1085,16 +1116,7 @@ pub async fn create_system_prompt(
             .await
             .unwrap_or_else(|_| "Unknown server error".to_string());
 
-        // Try to parse error as JSON to get a more specific error message
-        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_text) {
-            if let Some(error_msg) = error_json.get("error").and_then(|e| e.as_str()) {
-                return Err(format!("Server error ({}): {}", status, error_msg));
-            } else if let Some(message) = error_json.get("message").and_then(|m| m.as_str()) {
-                return Err(format!("Server error ({}): {}", status, message));
-            }
-        }
-
-        return Err(format!("Server error ({}): {}", status, error_text));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
 
     let system_prompt_response: SystemPromptResponse = response
@@ -1166,17 +1188,7 @@ pub async fn get_activity(app: AppHandle) -> Result<serde_json::Value, String> {
             .await
             .unwrap_or_else(|_| "Unknown server error".to_string());
 
-        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&error_text) {
-            if let Some(message) = error_json
-                .get("message")
-                .and_then(|m| m.as_str())
-                .or_else(|| error_json.get("error").and_then(|m| m.as_str()))
-            {
-                return Err(format!("Server error ({}): {}", status, message));
-            }
-        }
-
-        return Err(format!("Server error ({}): {}", status, error_text));
+        return Err(parse_cloud_error_response(status, &error_text));
     }
 
     response
