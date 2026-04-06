@@ -18,14 +18,20 @@ fn get_payment_endpoint() -> Result<String, String> {
     }
 }
 
-fn get_api_access_key() -> Result<String, String> {
+fn get_payment_api_access_key() -> Result<String, String> {
+    if let Ok(key) = env::var("PAYMENT_API_ACCESS_KEY") {
+        return Ok(key);
+    }
     if let Ok(key) = env::var("API_ACCESS_KEY") {
         return Ok(key);
     }
 
-    match option_env!("API_ACCESS_KEY") {
+    match option_env!("PAYMENT_API_ACCESS_KEY") {
         Some(key) => Ok(key.to_string()),
-        None => Err("API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string())
+        None => match option_env!("API_ACCESS_KEY") {
+            Some(key) => Ok(key.to_string()),
+            None => Err("PAYMENT_API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string())
+        },
     }
 }
 
@@ -225,7 +231,7 @@ pub async fn activate_license_api(
 ) -> Result<ActivationResponse, String> {
     // Get payment endpoint and API access key from environment
     let payment_endpoint = get_payment_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_payment_api_access_key()?;
 
     // Reuse an existing instance_id to avoid counting re-activations as new devices.
     let storage = secure_storage_get(app.clone()).await?;
@@ -297,7 +303,7 @@ pub async fn activate_license_api(
 pub async fn deactivate_license_api(app: AppHandle) -> Result<ActivationResponse, String> {
     // Get payment endpoint and API access key from environment
     let payment_endpoint = get_payment_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_payment_api_access_key()?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
     let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
     let app_version: String = env!("CARGO_PKG_VERSION").to_string();
@@ -353,7 +359,7 @@ pub async fn deactivate_license_api(app: AppHandle) -> Result<ActivationResponse
 pub async fn validate_license_api(app: AppHandle) -> Result<ValidateResponse, String> {
     // Get payment endpoint and API access key from environment
     let payment_endpoint = get_payment_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_payment_api_access_key()?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
     let storage = secure_storage_get(app.clone()).await?;
     let license_key = storage.license_key.unwrap_or_default();
@@ -430,7 +436,7 @@ pub fn mask_license_key_cmd(license_key: String) -> String {
 pub async fn get_checkout_url() -> Result<CheckoutResponse, String> {
     // Get payment endpoint and API access key from environment
     let payment_endpoint = get_payment_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_payment_api_access_key()?;
 
     // Make HTTP request to checkout endpoint with authorization header
     let client = reqwest::Client::new();

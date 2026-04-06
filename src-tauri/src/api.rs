@@ -20,14 +20,20 @@ fn get_app_endpoint() -> Result<String, String> {
     }
 }
 
-fn get_api_access_key() -> Result<String, String> {
+fn get_app_api_access_key() -> Result<String, String> {
+    if let Ok(key) = env::var("APP_API_ACCESS_KEY") {
+        return Ok(key);
+    }
     if let Ok(key) = env::var("API_ACCESS_KEY") {
         return Ok(key);
     }
 
-    match option_env!("API_ACCESS_KEY") {
+    match option_env!("APP_API_ACCESS_KEY") {
         Some(key) => Ok(key.to_string()),
-        None => Err("API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string())
+        None => match option_env!("API_ACCESS_KEY") {
+            Some(key) => Ok(key.to_string()),
+            None => Err("APP_API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string())
+        },
     }
 }
 
@@ -297,7 +303,7 @@ async fn fetch_api_response_config(
 ) -> Result<ApiResponseConfig, String> {
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_app_api_access_key()?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
 
     // Get stored credentials
@@ -806,7 +812,7 @@ async fn user_activity(
         Err(_) => return Ok(()),
     };
 
-    let api_access_key = match get_api_access_key() {
+    let api_access_key = match get_app_api_access_key() {
         Ok(value) => value,
         Err(_) => return Ok(()),
     };
@@ -876,7 +882,7 @@ async fn report_api_error(
         Err(_) => return,
     };
 
-    let api_access_key = match get_api_access_key() {
+    let api_access_key = match get_app_api_access_key() {
         Ok(value) => value,
         Err(_) => return,
     };
@@ -938,7 +944,7 @@ async fn report_api_error(
 pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_app_api_access_key()?;
 
     let (license_key, instance_id) = match get_stored_credentials(&app).await {
         Ok((lk, id, _)) => (lk, id),
@@ -1004,7 +1010,7 @@ pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
 #[tauri::command]
 pub async fn fetch_prompts(app: AppHandle) -> Result<RiekoPromptsResponse, String> {
     let app_endpoint = get_app_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_app_api_access_key()?;
 
     let (license_key, instance_id) = match get_stored_credentials(&app).await {
         Ok((lk, id, _)) => (lk, id),
@@ -1072,7 +1078,7 @@ pub async fn create_system_prompt(
 ) -> Result<SystemPromptResponse, String> {
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_app_api_access_key()?;
     let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
     let app_version: String = app.package_info().version.to_string();
@@ -1140,7 +1146,7 @@ pub async fn check_license_status(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_activity(app: AppHandle) -> Result<serde_json::Value, String> {
     let app_endpoint = get_app_endpoint()?;
-    let api_access_key = get_api_access_key()?;
+    let api_access_key = get_app_api_access_key()?;
 
     let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
 
