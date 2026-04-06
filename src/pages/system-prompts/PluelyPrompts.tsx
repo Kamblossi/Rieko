@@ -53,7 +53,7 @@ export const RiekoPrompts = () => {
     hasActiveLicense,
     cloudEnabledForPlan,
     setSupportsImages,
-    pluelyApiEnabled,
+    riekoCloudEnabled,
   } = useApp();
   const [prompts, setPrompts] = useState<RiekoPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -172,7 +172,7 @@ export const RiekoPrompts = () => {
 
       if (matchingModel) {
         // Update supportsImages based on model modality
-        if (pluelyApiEnabled) {
+        if (riekoCloudEnabled) {
           const hasImageSupport =
             matchingModel.modality?.includes("image") ?? false;
           setSupportsImages(hasImageSupport);

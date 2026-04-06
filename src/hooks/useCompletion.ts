@@ -8,7 +8,7 @@ import {
   saveConversation,
   getConversationById,
   generateConversationTitle,
-  shouldUsePluelyAPI,
+  shouldUseRiekoCloudAPI,
   MESSAGE_ID_OFFSET,
   generateConversationId,
   generateMessageId,
@@ -179,9 +179,9 @@ export const useCompletion = () => {
 
         let fullResponse = "";
 
-        const usePluelyAPI = await shouldUsePluelyAPI();
+        const useRiekoCloudAPI = await shouldUseRiekoCloudAPI();
         // Check if AI provider is configured
-        if (!selectedAIProvider.provider && !usePluelyAPI) {
+        if (!selectedAIProvider.provider && !useRiekoCloudAPI) {
           setState((prev) => ({
             ...prev,
             error: "Please select an AI provider in settings",
@@ -192,7 +192,7 @@ export const useCompletion = () => {
         const provider = allAiProviders.find(
           (p) => p.id === selectedAIProvider.provider
         );
-        if (!provider && !usePluelyAPI) {
+        if (!provider && !useRiekoCloudAPI) {
           setState((prev) => ({
             ...prev,
             error: "Invalid provider selected",
@@ -211,7 +211,7 @@ export const useCompletion = () => {
         try {
           // Use the fetchAIResponse function with signal
           for await (const chunk of fetchAIResponse({
-            provider: usePluelyAPI ? undefined : provider,
+            provider: useRiekoCloudAPI ? undefined : provider,
             selectedProvider: selectedAIProvider,
             systemPrompt: systemPrompt || undefined,
             history: messageHistory,
@@ -582,9 +582,9 @@ export const useCompletion = () => {
 
             let fullResponse = "";
 
-            const usePluelyAPI = await shouldUsePluelyAPI();
+            const useRiekoCloudAPI = await shouldUseRiekoCloudAPI();
             // Check if AI provider is configured
-            if (!selectedAIProvider.provider && !usePluelyAPI) {
+            if (!selectedAIProvider.provider && !useRiekoCloudAPI) {
               setState((prev) => ({
                 ...prev,
                 error: "Please select an AI provider in settings",
@@ -595,7 +595,7 @@ export const useCompletion = () => {
             const provider = allAiProviders.find(
               (p) => p.id === selectedAIProvider.provider
             );
-            if (!provider && !usePluelyAPI) {
+            if (!provider && !useRiekoCloudAPI) {
               setState((prev) => ({
                 ...prev,
                 error: "Invalid provider selected",
@@ -614,7 +614,7 @@ export const useCompletion = () => {
 
             // Use the fetchAIResponse function with image and signal
             for await (const chunk of fetchAIResponse({
-              provider: usePluelyAPI ? undefined : provider,
+              provider: useRiekoCloudAPI ? undefined : provider,
               selectedProvider: selectedAIProvider,
               systemPrompt: systemPrompt || undefined,
               history: messageHistory,

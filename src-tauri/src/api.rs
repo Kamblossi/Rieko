@@ -311,9 +311,9 @@ async fn fetch_api_response_config(
         .get(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
         .header("instance", &instance_id)
-        .header("machine_id", &machine_id);
+        .header("machine-id", &machine_id);
 
     // Add optional headers
     if let Some(p) = provider {
@@ -854,9 +854,9 @@ async fn user_activity(
         .post(&activity_url)
         .header("Authorization", format!("Bearer {}", api_access_key))
         .header("Content-Type", "application/json")
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
         .header("instance", &instance_id)
-        .header("machine_id", &machine_id)
+        .header("machine-id", &machine_id)
         .json(&payload)
         .send()
         .await;
@@ -960,10 +960,10 @@ pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
         .post(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
         .header("instance", &instance_id)
-        .header("machine_id", &machine_id)
-        .header("app_version", &app_version)
+        .header("machine-id", &machine_id)
+        .header("app-version", &app_version)
         .send()
         .await
         .map_err(|e| {
@@ -1025,10 +1025,10 @@ pub async fn fetch_prompts(app: AppHandle) -> Result<RiekoPromptsResponse, Strin
         .post(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
         .header("instance", &instance_id)
-        .header("machine_id", &machine_id)
-        .header("app_version", &app_version)
+        .header("machine-id", &machine_id)
+        .header("app-version", &app_version)
         .send()
         .await
         .map_err(|e| {
@@ -1084,10 +1084,10 @@ pub async fn create_system_prompt(
         .post(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
         .header("instance", &instance_id)
-        .header("machine_id", &machine_id)
-        .header("app_version", &app_version)
+        .header("machine-id", &machine_id)
+        .header("app-version", &app_version)
         .json(&serde_json::json!({
             "user_prompt": user_prompt
         }))
@@ -1161,10 +1161,10 @@ pub async fn get_activity(app: AppHandle) -> Result<serde_json::Value, String> {
     let response = client
         .get(&activity_url)
         .header("Authorization", format!("Bearer {}", api_access_key))
-        .header("license_key", &license_key)
+        .header("license-key", &license_key)
          .header("instance", &instance_id)
-        .header("machine_id", machine_id)
-        .header("app_version", app_version)
+        .header("machine-id", machine_id)
+        .header("app-version", app_version)
         .send()
         .await
         .map_err(|e| {

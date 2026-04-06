@@ -10,9 +10,8 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import curl2Json from "@bany/curl-to-json";
-import { shouldUsePluelyAPI } from "./pluely.api";
+import { shouldUseRiekoCloudAPI } from "./rieko-cloud.api";
 import { getFriendlyRiekoCloudErrorMessage } from "./rieko-cloud-errors";
-import { CHUNK_POLL_INTERVAL_MS } from "../chat-constants";
 import { getResponseSettings, RESPONSE_LENGTHS, LANGUAGES } from "@/lib";
 import { MARKDOWN_FORMATTING_INSTRUCTIONS } from "@/config/constants";
 
@@ -45,13 +44,45 @@ function buildEnhancedSystemPrompt(baseSystemPrompt?: string): string {
 }
 
 // Rieko Cloud streaming function
-async function* fetchPluelyAIResponse(params: {
+async function* fetchRiekoCloudResponse(params: {
   systemPrompt?: string;
   userMessage: string;
   imagesBase64?: string[];
   history?: Message[];
   signal?: AbortSignal;
 }): AsyncIterable<string> {
+  type StreamEvent =
+    | { type: "chunk"; chunk: string }
+    | { type: "complete" }
+    | { type: "aborted" }
+    | { type: "error"; error: Error };
+
+  class StreamQueue {
+    private queue: StreamEvent[] = [];
+    private waiters: Array<(value: StreamEvent) => void> = [];
+
+    push(value: StreamEvent) {
+      const waiter = this.waiters.shift();
+      if (waiter) {
+        waiter(value);
+        return;
+      }
+
+      this.queue.push(value);
+    }
+
+    next(): Promise<StreamEvent> {
+      const queued = this.queue.shift();
+      if (queued) {
+        return Promise.resolve(queued);
+      }
+
+      return new Promise((resolve) => {
+        this.waiters.push(resolve);
+      });
+    }
+  }
+
   try {
     const {
       systemPrompt,
@@ -83,17 +114,25 @@ async function* fetchPluelyAIResponse(params: {
       imageBase64 = imagesBase64.length === 1 ? imagesBase64[0] : imagesBase64;
     }
 
-    // Set up streaming event listener
-    let streamComplete = false;
-    const streamChunks: string[] = [];
+    const streamQueue = new StreamQueue();
+    const abortHandler = () => {
+      streamQueue.push({ type: "aborted" });
+    };
+    signal?.addEventListener("abort", abortHandler, { once: true });
 
     const unlisten = await listen("chat_stream_chunk", (event) => {
-      const chunk = event.payload as string;
-      streamChunks.push(chunk);
+      if (signal?.aborted) {
+        return;
+      }
+
+      streamQueue.push({
+        type: "chunk",
+        chunk: String(event.payload ?? ""),
+      });
     });
 
     const unlistenComplete = await listen("chat_stream_complete", () => {
-      streamComplete = true;
+      streamQueue.push({ type: "complete" });
     });
 
     try {
@@ -104,57 +143,46 @@ async function* fetchPluelyAIResponse(params: {
         return;
       }
 
-      // Start the streaming request using the new API response endpoint
-      await invoke("chat_stream_response", {
+      // Start streaming in the background so chunks can be yielded immediately.
+      const streamRequest = invoke("chat_stream_response", {
         userMessage,
         systemPrompt,
         imageBase64,
         history: historyString,
-      });
+      })
+        .then(() => undefined)
+        .catch((error) => {
+          streamQueue.push({
+            type: "error",
+            error: new Error(getFriendlyRiekoCloudErrorMessage(error)),
+          });
+        });
 
-      // Yield chunks as they come in
-      let lastIndex = 0;
-      while (!streamComplete) {
-        // Check if aborted during streaming
-        if (signal?.aborted) {
-          unlisten();
-          unlistenComplete();
+      while (true) {
+        const event = await streamQueue.next();
+
+        if (event.type === "chunk") {
+          if (event.chunk.length > 0) {
+            yield event.chunk;
+          }
+          continue;
+        }
+
+        if (event.type === "error") {
+          throw event.error;
+        }
+
+        if (event.type === "aborted") {
           return;
         }
 
-        // Wait a bit for chunks to accumulate
-        await new Promise((resolve) =>
-          setTimeout(resolve, CHUNK_POLL_INTERVAL_MS)
-        );
-
-        // Check again after timeout
-        if (signal?.aborted) {
-          unlisten();
-          unlistenComplete();
-          return;
-        }
-
-        // Yield any new chunks
-        for (let i = lastIndex; i < streamChunks.length; i++) {
-          yield streamChunks[i];
-        }
-        lastIndex = streamChunks.length;
-      }
-
-      // Final abort check before yielding remaining chunks
-      if (signal?.aborted) {
-        unlisten();
-        unlistenComplete();
+        await streamRequest;
         return;
-      }
-
-      // Yield any remaining chunks
-      for (let i = lastIndex; i < streamChunks.length; i++) {
-        yield streamChunks[i];
       }
     } finally {
       unlisten();
       unlistenComplete();
+      signal?.removeEventListener("abort", abortHandler);
     }
   } catch (error) {
     throw new Error(getFriendlyRiekoCloudErrorMessage(error));
@@ -192,9 +220,9 @@ export async function* fetchAIResponse(params: {
     const enhancedSystemPrompt = buildEnhancedSystemPrompt(systemPrompt);
 
     // Check if we should use Rieko Cloud instead
-    const usePluelyAPI = await shouldUsePluelyAPI();
-    if (usePluelyAPI) {
-      yield* fetchPluelyAIResponse({
+    const useRiekoCloudAPI = await shouldUseRiekoCloudAPI();
+    if (useRiekoCloudAPI) {
+      yield* fetchRiekoCloudResponse({
         systemPrompt: enhancedSystemPrompt,
         userMessage,
         imagesBase64,

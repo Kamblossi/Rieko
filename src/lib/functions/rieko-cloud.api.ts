@@ -11,11 +11,11 @@ type LicenseValidationState = {
 };
 
 // Helper function to check if Rieko Cloud should be used
-export async function shouldUsePluelyAPI(): Promise<boolean> {
+export async function shouldUseRiekoCloudAPI(): Promise<boolean> {
   try {
-    const pluelyApiEnabled =
+    const riekoCloudEnabled =
       safeLocalStorage.getItem(STORAGE_KEYS.RIEKO_API_ENABLED) === "true";
-    if (!pluelyApiEnabled) return false;
+    if (!riekoCloudEnabled) return false;
 
     const validation = await invoke<LicenseValidationState>(
       "validate_license_api"

@@ -52,8 +52,8 @@ const SELECTED_RIEKO_MODEL_STORAGE_KEY = "selected_rieko_model";
 
 export const RiekoCloudSetup = () => {
   const {
-    pluelyApiEnabled,
-    setPluelyApiEnabled,
+    riekoCloudEnabled,
+    setRiekoCloudEnabled,
     hasActiveLicense,
     cloudEnabledForPlan,
     licensePlanCode,
@@ -203,9 +203,9 @@ export const RiekoCloudSetup = () => {
         );
 
         if (cloudAllowed) {
-          await setPluelyApiEnabled(true);
+          await setRiekoCloudEnabled(true);
         } else {
-          await setPluelyApiEnabled(false);
+          await setRiekoCloudEnabled(false);
           if (licenseStatus.is_active) {
             setSuccess(
               "License activated. This plan uses your own AI and STT providers; Rieko Cloud stays disabled for this package."
@@ -245,7 +245,7 @@ export const RiekoCloudSetup = () => {
       });
 
       setHasActiveLicense(false);
-      setPluelyApiEnabled(false);
+      setRiekoCloudEnabled(false);
       setSuccess("License removed successfully!");
 
       await fetchModels();
@@ -265,7 +265,7 @@ export const RiekoCloudSetup = () => {
     setSearchValue(""); // Reset search when model is selected
 
     // Update supportsImages based on the selected model
-    if (pluelyApiEnabled) {
+    if (riekoCloudEnabled) {
       const hasImageSupport = model.modality?.includes("image") ?? false;
       setSupportsImages(hasImageSupport);
     }
@@ -516,7 +516,7 @@ export const RiekoCloudSetup = () => {
       </div>
       <div className="flex justify-between items-center">
         <Header
-          title={`${pluelyApiEnabled ? "Disable" : "Enable"} Rieko Cloud`}
+          title={`${riekoCloudEnabled ? "Disable" : "Enable"} Rieko Cloud`}
           description={
             !storedLicenseKey
               ? "A valid license is required to enable Rieko Cloud, or you can continue with your own AI and STT providers."
@@ -524,14 +524,14 @@ export const RiekoCloudSetup = () => {
                 ? "Your stored license is inactive. Update or reactivate it to use paid features."
                 : !cloudEnabledForPlan
                   ? `${getPlanDisplayName()} does not include Rieko Cloud. Continue with your own AI and STT providers.`
-                  : pluelyApiEnabled
+                  : riekoCloudEnabled
                     ? "Using Rieko Cloud for chat and audio workflows."
                     : "Using your own AI and STT providers."
           }
         />
         <Switch
-          checked={pluelyApiEnabled}
-          onCheckedChange={setPluelyApiEnabled}
+          checked={riekoCloudEnabled}
+          onCheckedChange={setRiekoCloudEnabled}
           disabled={!storedLicenseKey || !hasActiveLicense || !cloudEnabledForPlan}
         />
       </div>

@@ -155,7 +155,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Rieko Cloud state
-  const [pluelyApiEnabled, setPluelyApiEnabledState] = useState<boolean>(
+  const [riekoCloudEnabled, setRiekoCloudEnabledState] = useState<boolean>(
     safeLocalStorage.getItem(STORAGE_KEYS.RIEKO_API_ENABLED) === "true"
   );
 
@@ -179,7 +179,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     );
 
   const disableRiekoCloudLocally = () => {
-    setPluelyApiEnabledState(false);
+    setRiekoCloudEnabledState(false);
     safeLocalStorage.setItem(STORAGE_KEYS.RIEKO_API_ENABLED, "false");
     applySelectedProviderImageSupport();
   };
@@ -340,11 +340,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Load Rieko Cloud enabled state
-    const savedPluelyApiEnabled = safeLocalStorage.getItem(
+    const savedRiekoCloudEnabled = safeLocalStorage.getItem(
       STORAGE_KEYS.RIEKO_API_ENABLED
     );
-    if (savedPluelyApiEnabled !== null) {
-      setPluelyApiEnabledState(savedPluelyApiEnabled === "true");
+    if (savedRiekoCloudEnabled !== null) {
+      setRiekoCloudEnabledState(savedRiekoCloudEnabled === "true");
     }
 
     // Load selected audio devices
@@ -516,7 +516,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Check if the current AI provider/model supports images
   useEffect(() => {
     const checkImageSupport = async () => {
-      if (pluelyApiEnabled) {
+      if (riekoCloudEnabled) {
         // For Rieko Cloud, check the selected model's modality
         try {
           const storage = await invoke<{
@@ -549,7 +549,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkImageSupport();
-  }, [pluelyApiEnabled, selectedAIProvider.provider]);
+  }, [riekoCloudEnabled, selectedAIProvider.provider]);
 
   // Sync selected AI to localStorage
   useEffect(() => {
@@ -596,7 +596,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Update supportsImages immediately when provider changes
-    if (!pluelyApiEnabled) {
+    if (!riekoCloudEnabled) {
       const selectedProvider = allAiProviders.find((p) => p.id === provider);
       if (selectedProvider) {
         const hasImageSupport =
@@ -677,14 +677,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     loadData();
   };
 
-  const setPluelyApiEnabled = async (enabled: boolean) => {
+  const setRiekoCloudEnabled = async (enabled: boolean) => {
     if (enabled && !cloudEnabledForPlan) {
       disableRiekoCloudLocally();
       loadData();
       return;
     }
 
-    setPluelyApiEnabledState(enabled);
+    setRiekoCloudEnabledState(enabled);
     safeLocalStorage.setItem(STORAGE_KEYS.RIEKO_API_ENABLED, String(enabled));
 
     if (enabled) {
@@ -731,8 +731,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     toggleAlwaysOnTop,
     toggleAutostart,
     loadData,
-    pluelyApiEnabled,
-    setPluelyApiEnabled,
+    riekoCloudEnabled,
+    setRiekoCloudEnabled,
     hasActiveLicense,
     cloudEnabledForPlan,
     licensePlanCode,

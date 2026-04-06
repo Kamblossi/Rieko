@@ -8,11 +8,11 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { TYPE_PROVIDER } from "@/types";
 import curl2Json from "@bany/curl-to-json";
-import { shouldUsePluelyAPI } from "./pluely.api";
+import { shouldUseRiekoCloudAPI } from "./rieko-cloud.api";
 import { getFriendlyRiekoCloudErrorMessage } from "./rieko-cloud-errors";
 
 // Rieko Cloud STT function
-async function fetchPluelySTT(audio: File | Blob): Promise<string> {
+async function fetchRiekoCloudSTT(audio: File | Blob): Promise<string> {
   try {
     // Convert audio to base64
     const audioBase64 = await blobToBase64(audio);
@@ -59,9 +59,9 @@ export async function fetchSTT(params: STTParams): Promise<string> {
     const { provider, selectedProvider, audio } = params;
 
     // Check if we should use Rieko Cloud instead
-    const usePluelyAPI = await shouldUsePluelyAPI();
-    if (usePluelyAPI) {
-      return await fetchPluelySTT(audio);
+    const useRiekoCloudAPI = await shouldUseRiekoCloudAPI();
+    if (useRiekoCloudAPI) {
+      return await fetchRiekoCloudSTT(audio);
     }
 
     if (!provider) throw new Error("Provider not provided");

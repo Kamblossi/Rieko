@@ -227,8 +227,19 @@ pub async fn activate_license_api(
     let payment_endpoint = get_payment_endpoint()?;
     let api_access_key = get_api_access_key()?;
 
-    // Generate UUID for instance name
-    let instance_name = Uuid::new_v4().to_string();
+    // Reuse an existing instance_id to avoid counting re-activations as new devices.
+    let storage = secure_storage_get(app.clone()).await?;
+    let instance_name = storage
+        .instance_id
+        .and_then(|id| {
+            let trimmed = id.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
     let app_version: String = env!("CARGO_PKG_VERSION").to_string();
     // Prepare activation request
