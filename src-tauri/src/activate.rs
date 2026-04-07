@@ -22,16 +22,10 @@ fn get_payment_api_access_key() -> Result<String, String> {
     if let Ok(key) = env::var("PAYMENT_API_ACCESS_KEY") {
         return Ok(key);
     }
-    if let Ok(key) = env::var("API_ACCESS_KEY") {
-        return Ok(key);
-    }
 
     match option_env!("PAYMENT_API_ACCESS_KEY") {
         Some(key) => Ok(key.to_string()),
-        None => match option_env!("API_ACCESS_KEY") {
-            Some(key) => Ok(key.to_string()),
-            None => Err("PAYMENT_API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string())
-        },
+        None => Err("PAYMENT_API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string()),
     }
 }
 
