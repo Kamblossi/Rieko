@@ -25,7 +25,15 @@ fn get_app_api_access_key() -> Result<String, String> {
         return Ok(key);
     }
 
-    match option_env!("APP_API_ACCESS_KEY") {
+    if let Some(key) = option_env!("APP_API_ACCESS_KEY") {
+        return Ok(key.to_string());
+    }
+
+    if let Ok(key) = env::var("API_ACCESS_KEY") {
+        return Ok(key);
+    }
+
+    match option_env!("API_ACCESS_KEY") {
         Some(key) => Ok(key.to_string()),
         None => Err("APP_API_ACCESS_KEY environment variable not set. Please ensure it's set during the build process.".to_string()),
     }
