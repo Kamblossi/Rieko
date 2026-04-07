@@ -220,6 +220,21 @@ pub struct InstanceInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct DeactivationInstanceInfo {
+    id: String,
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeactivationResponse {
+    pub deactivated: bool,
+    pub error: Option<String>,
+    pub license_key: Option<String>,
+    pub instance: Option<DeactivationInstanceInfo>,
+    pub is_dev_license: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CheckoutResponse {
     success: Option<bool>,
     checkout_url: Option<String>,
@@ -302,7 +317,7 @@ pub async fn activate_license_api(
 }
 
 #[tauri::command]
-pub async fn deactivate_license_api(app: AppHandle) -> Result<ActivationResponse, String> {
+pub async fn deactivate_license_api(app: AppHandle) -> Result<DeactivationResponse, String> {
     // Get payment endpoint and API access key from environment
     let payment_endpoint = get_payment_endpoint()?;
     let api_access_key = get_payment_api_access_key()?;
@@ -329,29 +344,27 @@ pub async fn deactivate_license_api(app: AppHandle) -> Result<ActivationResponse
         .map_err(|e| {
             let error_msg = format!("{}", e);
             if error_msg.contains("url (") {
-                // Remove the URL part from the error message
                 let parts: Vec<&str> = error_msg.split(" for url (").collect();
                 if parts.len() > 1 {
-                    format!("Failed to make chat request: {}", parts[0])
+                    format!("Failed to deactivate license: {}", parts[0])
                 } else {
-                    format!("Failed to make chat request: {}", error_msg)
+                    format!("Failed to deactivate license: {}", error_msg)
                 }
             } else {
-                format!("Failed to make chat request: {}", error_msg)
+                format!("Failed to deactivate license: {}", error_msg)
             }
         })?;
-    let deactivation_response: ActivationResponse = response.json().await.map_err(|e| {
+    let deactivation_response: DeactivationResponse = response.json().await.map_err(|e| {
         let error_msg = format!("{}", e);
         if error_msg.contains("url (") {
-            // Remove the URL part from the error message
             let parts: Vec<&str> = error_msg.split(" for url (").collect();
             if parts.len() > 1 {
-                format!("Failed to make chat request: {}", parts[0])
+                format!("Failed to deactivate license: {}", parts[0])
             } else {
-                format!("Failed to make chat request: {}", error_msg)
+                format!("Failed to deactivate license: {}", error_msg)
             }
         } else {
-            format!("Failed to make chat request: {}", error_msg)
+            format!("Failed to deactivate license: {}", error_msg)
         }
     })?;
     Ok(deactivation_response)

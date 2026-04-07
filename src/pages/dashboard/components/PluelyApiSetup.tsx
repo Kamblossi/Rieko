@@ -30,6 +30,17 @@ interface ActivationResponse {
   is_dev_license?: boolean;
 }
 
+interface DeactivationResponse {
+  deactivated: boolean;
+  error?: string;
+  license_key?: string;
+  instance?: {
+    id: string;
+    name: string;
+  };
+  is_dev_license?: boolean;
+}
+
 interface StorageResult {
   license_key?: string;
   instance_id?: string;
@@ -228,9 +239,9 @@ export const RiekoCloudSetup = () => {
     setError(null);
     setSuccess(null);
     try {
-      const response: ActivationResponse = await invoke("deactivate_license_api");
+      const response: DeactivationResponse = await invoke("deactivate_license_api");
 
-      if (!response.activated) {
+      if (!response.deactivated) {
         setError(response.error || "Failed to remove license");
         return;
       }
