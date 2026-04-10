@@ -45,7 +45,10 @@ interface StorageResult {
   license_key?: string;
   instance_id?: string;
   selected_rieko_model?: string;
+  selected_rieko_mode?: string;
 }
+
+type ModelMode = "STANDARD" | "FRONTIER";
 
 interface Model {
   provider: string;
@@ -55,11 +58,18 @@ interface Model {
   description: string;
   modality: string;
   isAvailable: boolean;
+  mode: ModelMode;
 }
 
 const LICENSE_KEY_STORAGE_KEY = "rieko_license_key";
 const INSTANCE_ID_STORAGE_KEY = "rieko_instance_id";
 const SELECTED_RIEKO_MODEL_STORAGE_KEY = "selected_rieko_model";
+const SELECTED_RIEKO_MODE_STORAGE_KEY = "selected_rieko_mode";
+
+const cloudModelSupportsImages = (model?: Model | null) => {
+  const modality = model?.modality?.toUpperCase() ?? "";
+  return modality === "MULTIMODAL" || modality.includes("IMAGE");
+};
 
 export const RiekoCloudSetup = () => {
   const {
@@ -82,6 +92,7 @@ export const RiekoCloudSetup = () => {
   const [models, setModels] = useState<Model[]>([]);
   const [isModelsLoading, setIsModelsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [selectedMode, setSelectedMode] = useState<ModelMode>("STANDARD");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const fetchInitiated = useRef(false);
@@ -159,13 +170,69 @@ export const RiekoCloudSetup = () => {
       } else {
         setSelectedModel(null);
       }
+
+      if (storage.selected_rieko_mode === "FRONTIER") {
+        setSelectedMode("FRONTIER");
+      } else {
+        setSelectedMode("STANDARD");
+      }
     } catch (err) {
       console.error("Failed to load license status:", err);
       // If we can't read from storage, assume no license is stored
       setStoredLicenseKey(null);
       setMaskedLicenseKey(null);
       setSelectedModel(null);
+      setSelectedMode("STANDARD");
     }
+  };
+
+  useEffect(() => {
+    if (models.length === 0) {
+      return;
+    }
+
+    const modeModels = models.filter((model) => model.mode === selectedMode);
+
+    if (modeModels.length === 0) {
+      const fallbackModel = models[0] ?? null;
+      if (fallbackModel) {
+        setSelectedMode(fallbackModel.mode);
+        setSelectedModel(fallbackModel);
+        void persistCloudSelection(fallbackModel.mode, fallbackModel);
+      }
+      return;
+    }
+
+    const matchedModel =
+      selectedModel &&
+      modeModels.find((model) => model.id === selectedModel.id && model.mode === selectedMode);
+
+    if (!matchedModel) {
+      const fallbackModel = modeModels[0];
+      setSelectedModel(fallbackModel);
+      void persistCloudSelection(selectedMode, fallbackModel);
+    }
+  }, [models, selectedMode]);
+
+  const persistCloudSelection = async (
+    mode: ModelMode,
+    model: Model | null,
+  ) => {
+    const items: Array<{ key: string; value: string }> = [
+      {
+        key: SELECTED_RIEKO_MODE_STORAGE_KEY,
+        value: mode,
+      },
+    ];
+
+    if (model) {
+      items.push({
+        key: SELECTED_RIEKO_MODEL_STORAGE_KEY,
+        value: JSON.stringify(model),
+      });
+    }
+
+    await invoke("secure_storage_save", { items });
   };
 
   const handleActivateLicense = async () => {
@@ -252,6 +319,7 @@ export const RiekoCloudSetup = () => {
           LICENSE_KEY_STORAGE_KEY,
           INSTANCE_ID_STORAGE_KEY,
           SELECTED_RIEKO_MODEL_STORAGE_KEY,
+          SELECTED_RIEKO_MODE_STORAGE_KEY,
         ],
       });
 
@@ -272,27 +340,46 @@ export const RiekoCloudSetup = () => {
 
   const handleModelSelect = async (model: Model) => {
     setSelectedModel(model);
+    setSelectedMode(model.mode);
     setIsPopoverOpen(false); // Close popover when model is selected
     setSearchValue(""); // Reset search when model is selected
 
     // Update supportsImages based on the selected model
     if (riekoCloudEnabled) {
-      const hasImageSupport = model.modality?.includes("image") ?? false;
+      const hasImageSupport = cloudModelSupportsImages(model);
       setSupportsImages(hasImageSupport);
     }
 
     try {
-      await invoke("secure_storage_save", {
-        items: [
-          {
-            key: SELECTED_RIEKO_MODEL_STORAGE_KEY,
-            value: JSON.stringify(model),
-          },
-        ],
-      });
+      await persistCloudSelection(model.mode, model);
     } catch (error) {
       console.error("Failed to save model selection:", error);
       setError("Failed to save model selection.");
+    }
+  };
+
+  const handleModeSelect = async (mode: ModelMode) => {
+    setSelectedMode(mode);
+    setIsPopoverOpen(false);
+    setSearchValue("");
+
+    const modeModels = models.filter((model) => model.mode === mode);
+    const nextModel =
+      selectedModel?.mode === mode
+        ? selectedModel
+        : modeModels[0] ?? null;
+
+    setSelectedModel(nextModel);
+
+    if (riekoCloudEnabled) {
+      setSupportsImages(cloudModelSupportsImages(nextModel));
+    }
+
+    try {
+      await persistCloudSelection(mode, nextModel);
+    } catch (error) {
+      console.error("Failed to save mode selection:", error);
+      setError("Failed to save mode selection.");
     }
   };
 
@@ -309,7 +396,8 @@ export const RiekoCloudSetup = () => {
     }
   };
 
-  const providers = [...new Set(models.map((model) => model.provider))];
+  const visibleModels = models.filter((model) => model.mode === selectedMode);
+  const providers = [...new Set(visibleModels.map((model) => model.provider))];
   const capitalizedProviders = providers.map(
     (p) => p.charAt(0).toUpperCase() + p.slice(1)
   );
@@ -328,8 +416,8 @@ export const RiekoCloudSetup = () => {
 
   const title = isModelsLoading
     ? "Loading Models..."
-    : `Rieko supports ${models?.length} model${
-        models?.length !== 1 ? "s" : ""
+    : `${selectedMode === "STANDARD" ? "Standard" : "Frontier"} mode has ${visibleModels?.length} model${
+        visibleModels?.length !== 1 ? "s" : ""
       }`;
 
   const description = isModelsLoading
@@ -357,6 +445,29 @@ export const RiekoCloudSetup = () => {
           </div>
         )}
         <Header title={title} description={description} />
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Mode</label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={selectedMode === "STANDARD" ? "default" : "outline"}
+              className="h-11"
+              disabled={isModelsLoading || !cloudEnabledForPlan}
+              onClick={() => void handleModeSelect("STANDARD")}
+            >
+              Standard
+            </Button>
+            <Button
+              type="button"
+              variant={selectedMode === "FRONTIER" ? "default" : "outline"}
+              className="h-11"
+              disabled={isModelsLoading || !cloudEnabledForPlan}
+              onClick={() => void handleModeSelect("FRONTIER")}
+            >
+              Frontier
+            </Button>
+          </div>
+        </div>
         <Popover
           modal={true}
           open={isPopoverOpen}
@@ -371,7 +482,7 @@ export const RiekoCloudSetup = () => {
               variant="outline"
               className="h-11 text-start shadow-none w-full"
             >
-              {selectedModel ? selectedModel.name : "Select pro models"}{" "}
+              {selectedModel ? selectedModel.name : `Select ${selectedMode.toLowerCase()} model`}{" "}
               <ChevronDown />
             </Button>
           </PopoverTrigger>
@@ -394,7 +505,7 @@ export const RiekoCloudSetup = () => {
                   No models found. Please try again later.
                 </CommandEmpty>
                 <CommandGroup className="h-full rounded-xl">
-                  {models.map((model, index) => (
+                  {visibleModels.map((model, index) => (
                     <CommandItem
                       disabled={!model?.isAvailable}
                       key={`${model?.id}-${index}`}
@@ -434,7 +545,7 @@ export const RiekoCloudSetup = () => {
         {/* this model only supports these modalities */}
         {selectedModel && (
           <div className="text-xs text-amber-500 bg-amber-500/10 p-3 rounded-md">
-            {selectedModel.modality?.includes("image")
+            {cloudModelSupportsImages(selectedModel)
               ? "This model accepts both text and images as input and generates text responses."
               : "⚠️ This model ONLY accepts text input. Do NOT upload images - they will not work with this model. Use a text+image→text model if you need image support."}
           </div>

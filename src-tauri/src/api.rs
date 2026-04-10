@@ -57,11 +57,12 @@ struct SecureStorage {
     license_key: Option<String>,
     instance_id: Option<String>,
     selected_rieko_model: Option<String>,
+    selected_rieko_mode: Option<String>,
 }
 
 pub async fn get_stored_credentials(
     app: &AppHandle,
-) -> Result<(String, String, Option<Model>), String> {
+) -> Result<(String, String, Option<Model>, Option<String>), String> {
     let storage_path = get_secure_storage_path(app)?;
 
     if !storage_path.exists() {
@@ -85,7 +86,9 @@ pub async fn get_stored_credentials(
         .selected_rieko_model
         .and_then(|json_str| serde_json::from_str(&json_str).ok());
 
-    Ok((license_key, instance_id, selected_model))
+    let selected_mode = storage.selected_rieko_mode;
+
+    Ok((license_key, instance_id, selected_model, selected_mode))
 }
 
 // Audio API Structs
@@ -121,6 +124,7 @@ pub struct Model {
     model: String,
     description: String,
     modality: String,
+    mode: String,
     #[serde(rename = "isAvailable")]
     is_available: bool,
 }
@@ -205,11 +209,17 @@ pub async fn transcribe_audio(
     app: AppHandle,
     audio_base64: String,
 ) -> Result<AudioResponse, String> {
-    let (_, _, selected_model) = get_stored_credentials(&app).await?;
+    let (_, _, selected_model, selected_mode) = get_stored_credentials(&app).await?;
     let provider = selected_model.as_ref().map(|model| model.provider.clone());
     let model = selected_model.as_ref().map(|model| model.model.clone());
 
-    let api_config = fetch_api_response_config(&app, provider.clone(), model.clone()).await?;
+    let api_config = fetch_api_response_config(
+        &app,
+        provider.clone(),
+        model.clone(),
+        selected_mode.clone(),
+    )
+    .await?;
     let user_audio_config = api_config.user_audio.as_ref().ok_or_else(|| {
         "Audio transcription is not configured for this workspace. Please contact support."
             .to_string()
@@ -302,6 +312,7 @@ async fn fetch_api_response_config(
     app: &AppHandle,
     provider: Option<String>,
     model: Option<String>,
+    selected_mode: Option<String>,
 ) -> Result<ApiResponseConfig, String> {
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
@@ -309,7 +320,7 @@ async fn fetch_api_response_config(
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
 
     // Get stored credentials
-    let (license_key, instance_id, _) = get_stored_credentials(app).await?;
+    let (license_key, instance_id, _, _) = get_stored_credentials(app).await?;
 
     // Make HTTP request to response endpoint
     let client = reqwest::Client::new();
@@ -329,6 +340,9 @@ async fn fetch_api_response_config(
     }
     if let Some(m) = model {
         request = request.header("model", m);
+    }
+    if let Some(mode) = selected_mode {
+        request = request.header("selected-mode", mode);
     }
 
     let response = request.send().await.map_err(|e| {
@@ -537,13 +551,19 @@ pub async fn chat_stream_response(
     history: Option<String>,
 ) -> Result<String, String> {
     // Get stored credentials to get selected model
-    let (_, _, selected_model) = get_stored_credentials(&app).await?;
+    let (_, _, selected_model, selected_mode) = get_stored_credentials(&app).await?;
     let (provider, model) = selected_model.as_ref().map_or((None, None), |m| {
         (Some(m.provider.clone()), Some(m.model.clone()))
     });
 
     // Fetch API configuration
-    let api_config = fetch_api_response_config(&app, provider.clone(), model.clone()).await?;
+    let api_config = fetch_api_response_config(
+        &app,
+        provider.clone(),
+        model.clone(),
+        selected_mode.clone(),
+    )
+    .await?;
 
     // Parse the body from API config to merge with our request
     let mut extra_body: serde_json::Value = if !api_config.body.is_empty() {
@@ -615,6 +635,7 @@ pub async fn chat_stream_response(
     // Build request body
     let mut request_body = serde_json::json!({
         "model": api_config.model,
+        "selected_mode": selected_mode,
         "messages": messages,
         "stream": true
     });
@@ -819,7 +840,7 @@ async fn user_activity(
         Err(_) => return Ok(()),
     };
 
-    let (license_key, instance_id, stored_model) = match get_stored_credentials(&app).await {
+    let (license_key, instance_id, stored_model, _) = match get_stored_credentials(&app).await {
         Ok(values) => values,
         Err(_) => return Ok(()),
     };
@@ -889,7 +910,7 @@ async fn report_api_error(
         Err(_) => return,
     };
 
-    let (license_key, instance_id, stored_model) = match get_stored_credentials(&app).await {
+    let (license_key, instance_id, stored_model, _) = match get_stored_credentials(&app).await {
         Ok(values) => values,
         Err(_) => return,
     };
@@ -949,7 +970,7 @@ pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
     let api_access_key = get_app_api_access_key()?;
 
     let (license_key, instance_id) = match get_stored_credentials(&app).await {
-        Ok((lk, id, _)) => (lk, id),
+        Ok((lk, id, _, _)) => (lk, id),
         Err(_) => ("".to_string(), "".to_string()),
     };
     let machine_id = app
@@ -1015,7 +1036,7 @@ pub async fn fetch_prompts(app: AppHandle) -> Result<RiekoPromptsResponse, Strin
     let api_access_key = get_app_api_access_key()?;
 
     let (license_key, instance_id) = match get_stored_credentials(&app).await {
-        Ok((lk, id, _)) => (lk, id),
+        Ok((lk, id, _, _)) => (lk, id),
         Err(_) => ("".to_string(), "".to_string()),
     };
     let machine_id = app
@@ -1081,7 +1102,7 @@ pub async fn create_system_prompt(
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
     let api_access_key = get_app_api_access_key()?;
-    let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
+    let (license_key, instance_id, selected_model, selected_mode) = get_stored_credentials(&app).await?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
     let app_version: String = app.package_info().version.to_string();
     // Make HTTP request to models endpoint
@@ -1096,6 +1117,17 @@ pub async fn create_system_prompt(
         .header("instance", &instance_id)
         .header("machine-id", &machine_id)
         .header("app-version", &app_version)
+        .header(
+            "model",
+            selected_model
+                .as_ref()
+                .map(|model| model.id.as_str())
+                .unwrap_or("standard-auto"),
+        )
+        .header(
+            "selected-mode",
+            selected_mode.as_deref().unwrap_or("STANDARD"),
+        )
         .json(&serde_json::json!({
             "user_prompt": user_prompt
         }))
@@ -1150,7 +1182,7 @@ pub async fn get_activity(app: AppHandle) -> Result<serde_json::Value, String> {
     let app_endpoint = get_app_endpoint()?;
     let api_access_key = get_app_api_access_key()?;
 
-    let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
+    let (license_key, instance_id, _, _) = get_stored_credentials(&app).await?;
 
     let machine_id = match app.machine_uid().get_machine_uid() {
         Ok(id) => id.id.unwrap_or_default(),

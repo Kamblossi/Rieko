@@ -9,7 +9,6 @@ export type LicenseCapabilities = {
   supports_audio?: boolean;
   supports_vision?: boolean;
   supports_code?: boolean;
-  allowed_model_keys?: string[];
   trial_request_limit?: number | null;
   monthly_generation_limit?: number | null;
 };

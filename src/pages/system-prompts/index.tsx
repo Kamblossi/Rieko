@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { DeleteSystemPrompt } from "./Delete";
 import { CreateEditDialog } from "./CreateEditDialog";
-import { RiekoPrompts } from "./PluelyPrompts";
+import { RiekoPrompts } from "./RiekoPrompts";
 import { useState } from "react";
 import { PageLayout } from "@/layouts";
 

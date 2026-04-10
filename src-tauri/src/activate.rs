@@ -56,6 +56,7 @@ struct SecureStorage {
     license_key: Option<String>,
     instance_id: Option<String>,
     selected_rieko_model: Option<String>,
+    selected_rieko_mode: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -69,6 +70,7 @@ pub struct StorageResult {
     license_key: Option<String>,
     instance_id: Option<String>,
     selected_rieko_model: Option<String>,
+    selected_rieko_mode: Option<String>,
 }
 
 #[tauri::command]
@@ -88,6 +90,7 @@ pub async fn secure_storage_save(app: AppHandle, items: Vec<StorageItem>) -> Res
             "rieko_license_key" => storage.license_key = Some(item.value),
             "rieko_instance_id" => storage.instance_id = Some(item.value),
             "selected_rieko_model" => storage.selected_rieko_model = Some(item.value),
+            "selected_rieko_mode" => storage.selected_rieko_mode = Some(item.value),
             _ => return Err(format!("Invalid storage key: {}", item.key)),
         }
     }
@@ -110,6 +113,7 @@ pub async fn secure_storage_get(app: AppHandle) -> Result<StorageResult, String>
             license_key: None,
             instance_id: None,
             selected_rieko_model: None,
+            selected_rieko_mode: None,
         });
     }
 
@@ -123,6 +127,7 @@ pub async fn secure_storage_get(app: AppHandle) -> Result<StorageResult, String>
         license_key: storage.license_key,
         instance_id: storage.instance_id,
         selected_rieko_model: storage.selected_rieko_model,
+        selected_rieko_mode: storage.selected_rieko_mode,
     })
 }
 
@@ -145,6 +150,7 @@ pub async fn secure_storage_remove(app: AppHandle, keys: Vec<String>) -> Result<
             "rieko_license_key" => storage.license_key = None,
             "rieko_instance_id" => storage.instance_id = None,
             "selected_rieko_model" => storage.selected_rieko_model = None,
+            "selected_rieko_mode" => storage.selected_rieko_mode = None,
             _ => return Err(format!("Invalid storage key: {}", key)),
         }
     }
@@ -190,8 +196,6 @@ pub struct LicenseCapabilities {
     #[serde(default)]
     supports_code: bool,
     #[serde(default)]
-    allowed_model_keys: Vec<String>,
-    #[serde(default)]
     trial_request_limit: Option<u32>,
     #[serde(default)]
     monthly_generation_limit: Option<u32>,
@@ -201,6 +205,8 @@ pub struct LicenseCapabilities {
 pub struct ValidateResponse {
     is_active: bool,
     last_validated_at: Option<String>,
+    #[serde(default)]
+    is_admin: bool,
     is_dev_license: bool,
     #[serde(default)]
     plan_code: Option<String>,
@@ -322,7 +328,7 @@ pub async fn deactivate_license_api(app: AppHandle) -> Result<DeactivationRespon
     let payment_endpoint = get_payment_endpoint()?;
     let api_access_key = get_payment_api_access_key()?;
     let machine_id: String = app.machine_uid().get_machine_uid().unwrap().id.unwrap();
-    let (license_key, instance_id, _) = get_stored_credentials(&app).await?;
+    let (license_key, instance_id, _, _) = get_stored_credentials(&app).await?;
     let app_version: String = env!("CARGO_PKG_VERSION").to_string();
     let deactivation_request = ActivationRequest {
         license_key: license_key.clone(),

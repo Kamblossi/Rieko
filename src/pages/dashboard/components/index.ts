@@ -1,2 +1,2 @@
-export * from "./PluelyApiSetup";
+export * from "./RiekoCloudSetup";
 export * from "./Usage";

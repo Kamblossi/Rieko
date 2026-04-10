@@ -71,6 +71,11 @@ const validateAndProcessCurlProviders = (
   }
 };
 
+const cloudModelSupportsImages = (model?: { modality?: string | null }) => {
+  const modality = model?.modality?.toUpperCase() ?? "";
+  return modality === "MULTIMODAL" || modality.includes("IMAGE");
+};
+
 // Create the context
 const AppContext = createContext<IContextType | undefined>(undefined);
 
@@ -193,7 +198,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       tier: null,
       capabilities: {
         cloud_enabled: false,
-        allowed_model_keys: [],
       },
       reason: null,
     };
@@ -525,7 +529,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
           if (storage.selected_rieko_model) {
             const model = JSON.parse(storage.selected_rieko_model);
-            const hasImageSupport = model.modality?.includes("image") ?? false;
+            const hasImageSupport = cloudModelSupportsImages(model);
             setSupportsImages(hasImageSupport);
           } else {
             // No model selected, assume no image support
@@ -695,7 +699,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         if (storage.selected_rieko_model) {
           const model = JSON.parse(storage.selected_rieko_model);
-          const hasImageSupport = model.modality?.includes("image") ?? false;
+          const hasImageSupport = cloudModelSupportsImages(model);
           setSupportsImages(hasImageSupport);
         } else {
           // No model selected, assume no image support

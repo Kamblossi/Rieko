@@ -42,10 +42,17 @@ interface Model {
   description: string;
   modality: string;
   isAvailable: boolean;
+  mode: "STANDARD" | "FRONTIER";
 }
 
 const SELECTED_RIEKO_MODEL_STORAGE_KEY = "selected_rieko_model";
+const SELECTED_RIEKO_MODE_STORAGE_KEY = "selected_rieko_mode";
 const SELECTED_RIEKO_PROMPT_STORAGE_KEY = "selected_rieko_prompt";
+
+const cloudModelSupportsImages = (model?: Model | null) => {
+  const modality = model?.modality?.toUpperCase() ?? "";
+  return modality === "MULTIMODAL" || modality.includes("IMAGE");
+};
 
 export const RiekoPrompts = () => {
   const {
@@ -173,13 +180,16 @@ export const RiekoPrompts = () => {
       if (matchingModel) {
         // Update supportsImages based on model modality
         if (riekoCloudEnabled) {
-          const hasImageSupport =
-            matchingModel.modality?.includes("image") ?? false;
+          const hasImageSupport = cloudModelSupportsImages(matchingModel);
           setSupportsImages(hasImageSupport);
         }
 
         await invoke("secure_storage_save", {
           items: [
+            {
+              key: SELECTED_RIEKO_MODE_STORAGE_KEY,
+              value: matchingModel.mode,
+            },
             {
               key: SELECTED_RIEKO_MODEL_STORAGE_KEY,
               value: JSON.stringify(matchingModel),
